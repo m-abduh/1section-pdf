@@ -19,7 +19,6 @@ function SuccessContent() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [manual, setManual] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const fromQuery = searchParams.get("order");

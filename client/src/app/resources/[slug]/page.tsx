@@ -196,6 +196,7 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
                     {product.active ? (
                       <BuyButton
                         productId={product.id}
+                        productSlug={product.slug}
                         label="Buy and get instant access"
                       />
                     ) : (

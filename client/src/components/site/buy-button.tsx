@@ -1,12 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { getApiErrorMessage } from "@/lib/api";
-import { useCheckout } from "@/hooks/use-checkout";
 
 interface BuyButtonProps {
   productId: string;
+  productSlug?: string;
   label?: string;
   size?: "md" | "lg";
   className?: string;
@@ -14,11 +13,12 @@ interface BuyButtonProps {
 
 export function BuyButton({
   productId,
+  productSlug,
   label = "Buy once, download instantly",
   size = "lg",
   className = "",
 }: BuyButtonProps) {
-  const checkout = useCheckout();
+  const router = useRouter();
 
   return (
     <div className="w-full">
@@ -26,17 +26,14 @@ export function BuyButton({
         type="button"
         size={size}
         className={`w-full ${className}`}
-        disabled={checkout.isPending}
-        onClick={() => checkout.mutate({ productId })}
+        onClick={() => {
+          const params = new URLSearchParams({ product: productId });
+          if (productSlug) params.set("slug", productSlug);
+          router.push(`/checkout?${params.toString()}`);
+        }}
       >
-        {checkout.isPending ? <Spinner /> : null}
-        {checkout.isPending ? "Starting checkout..." : label}
+        {label}
       </Button>
-      {checkout.isError ? (
-        <p className="mt-2 text-center text-xs font-medium text-red-600">
-          {getApiErrorMessage(checkout.error)}
-        </p>
-      ) : null}
     </div>
   );
 }
