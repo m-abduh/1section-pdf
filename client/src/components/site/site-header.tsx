@@ -108,7 +108,11 @@ export function SiteHeader({
           {currentNicheName ? (
             <>
               <span className="text-fg-muted">/</span>
-              <span className="text-sm font-medium text-fg">
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-fg">
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: niches.find((n) => n.name === currentNicheName)?.accentColor ?? "var(--accent)" }}
+                />
                 {currentNicheName}
               </span>
             </>
@@ -137,12 +141,6 @@ export function SiteHeader({
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Link
-            href="/#niches"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
-          >
-            Explore
-          </Link>
         </div>
       </div>
     </header>
