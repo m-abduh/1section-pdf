@@ -7,17 +7,69 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum StorageProvider {
+  CLOUDINARY
+  LOCAL
+  EXTERNAL
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+enum EntitlementStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
 model AdminUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   name         String?
   passwordHash String
-  role         String   @default("admin")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         String     @default("admin")
+  isActive     Boolean    @default(true)
+  tokenVersion Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
 
   @@map("admin_users")
+}
+
+model AuditLog {
+  id        String    @id @default(cuid())
+  adminId   String?
+  admin     AdminUser? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
 }
 
 model Niche {
@@ -40,115 +92,184 @@ model Niche {
 }
 
 model Product {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   nicheId         String
-  niche           Niche       @relation(fields: [nicheId], references: [id], onDelete: Cascade)
-  slug            String      @unique
+  niche           Niche         @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  slug            String        @unique
   name            String
   summary         String?
   description     String?
   coverImage      String?
   priceAmount     Int
   compareAtAmount Int?
-  currency        String       @default("USD")
+  currency        String        @default("USD")
   paddleProductId String?
   paddlePriceId   String?
   paddleSyncedAt  DateTime?
-  features        Json         @default("[]")
-  active          Boolean      @default(true)
-  sortOrder       Int          @default(0)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  features        Json          @default("[]")
+  active          Boolean       @default(true)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   files           ProductFile[]
   orderItems      OrderItem[]
+  entitlements    Entitlement[]
 
   @@index([nicheId, active, sortOrder])
   @@map("products")
 }
 
 model ProductFile {
-  id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name      String
-  fileUrl   String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
+  id             String          @id @default(cuid())
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name           String
+  provider       StorageProvider @default(EXTERNAL)
+  storageKey     String?
+  resourceType   String?
+  format         String?
+  bytes          Int?
+  checksum       String?
+  fileUrl        String?
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  entitlements   Entitlement[]
+  downloadTokens DownloadToken[]
 
-  @@index([productId, sortOrder])
+  @@unique([productId, sortOrder])
+  @@index([productId])
   @@map("product_files")
 }
 
-enum OrderStatus {
-  PENDING
-  PAID
-  FAILED
-  CANCELED
-  REFUNDED
-}
-
 model Order {
-  id                  String      @id @default(cuid())
-  orderNumber         String      @unique
+  id                  String       @id @default(cuid())
+  orderNumber         String       @unique
   email               String?
   customerName        String?
-  status              OrderStatus @default(PENDING)
-  currency            String      @default("USD")
-  subtotal            Int         @default(0)
-  total               Int         @default(0)
-  paddleTransactionId String?     @unique
+  status              OrderStatus  @default(PENDING)
+  currency            String       @default("USD")
+  subtotal            Int          @default(0)
+  total               Int          @default(0)
+  amountRefunded      Int          @default(0)
+  paddleTransactionId String?      @unique
   paddleCustomerId    String?
   paidAt              DateTime?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  refundedAt          DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
   items               OrderItem[]
+  payments            Payment[]
+  entitlements        Entitlement[]
+  accessLinks         AccessLink[]
 
   @@index([status, createdAt])
-  @@index([email])
+  @@index([email, createdAt])
   @@map("orders")
 }
 
 model OrderItem {
-  id            String          @id @default(cuid())
+  id            String        @id @default(cuid())
   orderId       String
-  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId     String?
-  product       Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  product       Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
   productName   String
+  productTitle  String?
   unitAmount    Int
-  quantity      Int             @default(1)
+  quantity      Int           @default(1)
+  lineTotal     Int           @default(0)
   paddlePriceId String?
-  createdAt     DateTime        @default(now())
+  createdAt     DateTime      @default(now())
   tokens        DownloadToken[]
+  entitlements  Entitlement[]
 
   @@index([orderId])
   @@map("order_items")
 }
 
+model Payment {
+  id                    String        @id @default(cuid())
+  orderId               String
+  order                 Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider              String        @default("PADDLE")
+  providerTransactionId String?       @unique
+  status                PaymentStatus @default(PENDING)
+  amount                Int
+  currency              String        @default("USD")
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([orderId, status])
+  @@map("payments")
+}
+
+model Entitlement {
+  id             String            @id @default(cuid())
+  orderId        String
+  order          Order             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderItemId    String
+  orderItem      OrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  fileId         String?
+  file           ProductFile?      @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  status         EntitlementStatus @default(ACTIVE)
+  grantedAt      DateTime          @default(now())
+  downloadTokens DownloadToken[]
+
+  @@unique([orderItemId, fileId])
+  @@index([orderId])
+  @@index([status])
+  @@map("entitlements")
+}
+
 model DownloadToken {
-  id            String    @id @default(cuid())
-  token         String    @unique
+  id            String       @id @default(cuid())
+  token         String       @unique
   orderItemId   String
-  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  orderItem     OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  entitlementId String?
+  entitlement   Entitlement? @relation(fields: [entitlementId], references: [id], onDelete: SetNull)
   fileId        String?
+  file          ProductFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
   label         String
-  fileUrl       String
+  fileUrl       String?
   expiresAt     DateTime
-  maxDownloads  Int       @default(5)
-  downloadCount Int       @default(0)
-  createdAt     DateTime  @default(now())
+  maxDownloads  Int          @default(5)
+  downloadCount Int          @default(0)
+  createdAt     DateTime     @default(now())
 
   @@index([orderItemId])
+  @@index([expiresAt])
   @@map("download_tokens")
 }
 
+model AccessLink {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  orderId   String
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([orderId])
+  @@map("access_links")
+}
+
 model WebhookEvent {
-  id          String   @id @default(cuid())
-  eventId     String   @unique
+  id          String        @id @default(cuid())
+  eventId     String        @unique
   type        String
   payload     Json
-  processedAt DateTime @default(now())
+  status      WebhookStatus @default(RECEIVED)
+  attempts    Int           @default(0)
+  error       String?
+  receivedAt  DateTime      @default(now())
+  processedAt DateTime?
 
+  @@index([status, receivedAt])
   @@map("webhook_events")
 }
 

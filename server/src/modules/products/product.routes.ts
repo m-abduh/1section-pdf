@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../../middlewares/auth";
+import { requireAuth, requireRole } from "../../middlewares/auth";
 import { validate } from "../../middlewares/validate";
 import * as productController from "./product.controller";
 import {
@@ -25,7 +25,7 @@ productRouter.get(
 
 export const adminProductRouter = Router();
 
-adminProductRouter.use(requireAuth);
+adminProductRouter.use(requireAuth, requireRole("admin"));
 adminProductRouter.get("/", productController.listAdmin);
 adminProductRouter.post(
   "/",

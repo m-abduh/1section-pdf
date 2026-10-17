@@ -109,18 +109,21 @@ Server sudah membuat transaksi dengan harga tepercaya, sehingga client hanya mem
 `POST /api/webhooks/paddle` — raw JSON body + header `Paddle-Signature`.
 Verifikasi: `paddle.webhooks.unmarshal(rawBodyString, PADDLE_WEBHOOK_SECRET, signature)`. Gagal → `400`.
 
-### 5.2 Idempotensi
-`recordWebhookEvent` menyimpan `eventId` (unique). Bila sudah ada → respons `{ received:true, duplicate:true }` tanpa memproses ulang.
+### 5.2 Idempotensi & retry
+`beginEvent` menyimpan `eventId` (unique) dengan `status=RECEIVED`. Bila `eventId` sudah ada:
+- `PROCESSED` → respons `{ received:true, duplicate:true }` tanpa memproses ulang.
+- `FAILED`/`RECEIVED` → diproses ulang (retry dari Paddle aman, fulfillment idempotent).
+Sukses → `status=PROCESSED, processedAt`; gagal → `status=FAILED, error, attempts++` dan server membalas **500** agar Paddle retry.
 
 ### 5.3 Penanganan event
-| eventType | Aksi (`handlePaddleEvent`) |
+| eventType | Aksi (`processEvent`) |
 | --- | --- |
-| `transaction.completed` | `markOrderPaid`: cari order (customData.orderId → fallback `paddleTransactionId`), set `PAID` + `paidAt` + `paddleCustomerId`; resolve email bila kosong via `paddle.customers.get`; **terbitkan `DownloadToken`** untuk tiap file produk. |
-| `transaction.payment_failed` | status → `FAILED` |
-| `transaction.canceled` | status → `CANCELED` |
-| `adjustment.created` | status → `REFUNDED` |
+| `transaction.completed` | **Validasi** payload (status/currency/harga/qty/total) terhadap snapshot order; dalam transaksi DB: order → `PAID` + `paidAt` + Payment `COMPLETED`; lalu `fulfillOrder` menerbitkan `Entitlement` + `DownloadToken` (idempotent). |
+| `transaction.payment_failed` | order → `FAILED`, Payment → `FAILED` |
+| `transaction.canceled` | order → `CANCELED`, Payment → `CANCELED` |
+| `adjustment.created` / `adjustment.updated` | hanya bila `action ∈ {refund, chargeback}` dan `status=approved`: full → `REFUNDED` + cabut entitlement; sebagian → `PARTIALLY_REFUNDED` (+`amountRefunded`). |
 
-Aturan: order yang sudah `PAID` tidak akan diturunkan statusnya (kecuali `REFUNDED`).
+Aturan: order `PAID` tidak diturunkan statusnya kecuali `FAILED`/`CANCELED`. Rekonsiliasi berkala (`reconcilePaidOrders`) mengisi entitlement yang bolong.
 
 ### 5.4 Resolusi order
 `resolveOrder(transactionId, customData)`:
@@ -128,10 +131,10 @@ Aturan: order yang sudah `PAID` tidak akan diturunkan statusnya (kecuali `REFUND
 2. fallback `findUnique(Order.paddleTransactionId)`.
 
 ### 5.5 Fulfillment download
-`issueDownloadTokensForItem(orderItemId, productId)` membuat 1 token per `ProductFile`:
-- `token` = hex 24 byte, `label` = nama file, `fileUrl` = URL file,
-- `expiresAt` = now + `DOWNLOAD_TOKEN_TTL_HOURS`, `maxDownloads` = `DOWNLOAD_MAX_HITS`.
-Bila item tidak punya file → log warning.
+`fulfillOrder(orderId)` (idempotent) membuat `Entitlement` per `(orderItem, file)` (unique) lalu `DownloadToken` per entitlement:
+- `token` = hex 24 byte, `label` = nama file,
+- `expiresAt` = now + `DOWNLOAD_TOKEN_TTL_HOURS`, `maxDownloads` = `DOWNLOAD_MAX_HITS`,
+- sumber file ditentukan dari `ProductFile.provider` (Cloudinary → signed URL saat unduh; EXTERNAL/LOKAL → `fileUrl`).
 
 ---
 

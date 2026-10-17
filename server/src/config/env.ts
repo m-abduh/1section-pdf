@@ -10,6 +10,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
   CLIENT_URL: z.string().url().default("http://localhost:3000"),
+  APP_URL: z.string().url().optional(),
   ROOT_DOMAIN: z.string().default("1section.com"),
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
@@ -23,6 +24,22 @@ const envSchema = z.object({
 
   DOWNLOAD_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(72),
   DOWNLOAD_MAX_HITS: z.coerce.number().int().positive().default(5),
+  DOWNLOAD_SIGNED_URL_TTL_MINUTES: z.coerce.number().int().positive().default(10),
+  ACCESS_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(60),
+
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().default("1section/bundles"),
+
+  EMAIL_PROVIDER: z.enum(["resend", "log"]).default("resend"),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("1Section <no-reply@1section.com>"),
+
+  RATE_LIMIT_DISABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -41,3 +58,19 @@ export const corsOrigins = env.CORS_ORIGINS.split(",")
   .filter(Boolean);
 
 export const isProduction = env.NODE_ENV === "production";
+export const isTest = env.NODE_ENV === "test";
+
+export const appUrl = env.APP_URL ?? env.CLIENT_URL;
+
+export const cloudinaryConfig = {
+  cloudName: env.CLOUDINARY_CLOUD_NAME,
+  apiKey: env.CLOUDINARY_API_KEY,
+  apiSecret: env.CLOUDINARY_API_SECRET,
+  folder: env.CLOUDINARY_FOLDER,
+};
+
+export const hasCloudinary = Boolean(
+  env.CLOUDINARY_CLOUD_NAME &&
+    env.CLOUDINARY_API_KEY &&
+    env.CLOUDINARY_API_SECRET,
+);

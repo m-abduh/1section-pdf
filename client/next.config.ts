@@ -14,15 +14,11 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.1section.com" },
       { protocol: "https", hostname: "**.paddle.com" },
       { protocol: "https", hostname: "**.paddleusercontent.com" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: "/uploads/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/uploads/:path*`,
-      },
-    ];
+    return [];
   },
 };
 

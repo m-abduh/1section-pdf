@@ -41,8 +41,10 @@ export async function createCheckout(
           {
             productId: product.id,
             productName: product.name,
+            productTitle: product.name,
             unitAmount: product.priceAmount,
             quantity: 1,
+            lineTotal: product.priceAmount,
             paddlePriceId: product.paddlePriceId,
           },
         ],
@@ -72,10 +74,22 @@ export async function createCheckout(
       );
     }
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { paddleTransactionId: transaction.id },
-    });
+    await prisma.$transaction([
+      prisma.order.update({
+        where: { id: order.id },
+        data: { paddleTransactionId: transaction.id },
+      }),
+      prisma.payment.create({
+        data: {
+          orderId: order.id,
+          provider: "PADDLE",
+          providerTransactionId: transaction.id,
+          status: "PENDING",
+          amount: order.total,
+          currency: order.currency,
+        },
+      }),
+    ]);
 
     return {
       orderNumber: order.orderNumber,

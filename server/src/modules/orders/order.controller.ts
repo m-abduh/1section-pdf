@@ -4,8 +4,21 @@ import * as orderService from "./order.service";
 
 export async function status(req: Request, res: Response) {
   const email = typeof req.query.email === "string" ? req.query.email : undefined;
-  const order = await orderService.getOrderStatus(req.params.orderNumber as string, email);
+  const access = typeof req.query.access === "string" ? req.query.access : undefined;
+  const order = await orderService.getOrderStatus(
+    req.params.orderNumber as string,
+    { email, accessToken: access },
+  );
   res.json({ success: true, data: order });
+}
+
+export async function requestAccessLink(req: Request, res: Response) {
+  const body = req.body as { email: string };
+  await orderService.requestAccessLink(req.params.orderNumber as string, body.email);
+  res.json({
+    success: true,
+    data: { sent: true, message: "If the details match, an access link is on its way." },
+  });
 }
 
 interface AdminOrderQuery {

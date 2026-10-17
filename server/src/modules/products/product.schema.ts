@@ -2,7 +2,13 @@ import { z } from "zod";
 
 export const productFileSchema = z.object({
   name: z.string().min(1).max(200),
-  fileUrl: z.string().min(1).max(1000),
+  provider: z.enum(["CLOUDINARY", "LOCAL", "EXTERNAL"]).optional(),
+  storageKey: z.string().max(500).optional().nullable(),
+  resourceType: z.string().max(50).optional().nullable(),
+  format: z.string().max(20).optional().nullable(),
+  bytes: z.number().int().min(0).optional().nullable(),
+  checksum: z.string().max(128).optional().nullable(),
+  fileUrl: z.string().max(1000).optional().nullable(),
 });
 
 export const createProductSchema = z.object({

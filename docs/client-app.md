@@ -21,16 +21,15 @@
 ### `next.config.ts`
 - `reactStrictMode: true`.
 - `allowedDevOrigins`: `1section.com`, `*.1section.com`, `*.localhost`, `lvh.me`, `*.lvh.me`.
-- `images.remotePatterns`: `**.1section.com`, `**.paddle.com`, `**.paddleusercontent.com`.
-- `rewrites`: `/uploads/:path*` → `${NEXT_PUBLIC_API_URL}/uploads/:path*` (agar aset upload minimal punya satu origin).
+- `images.remotePatterns`: `**.1section.com`, `**.paddle.com`, `**.paddleusercontent.com`, `res.cloudinary.com`.
 
 ### Environment (`NEXT_PUBLIC_*`)
 | Var | Default | Fungsi |
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Base URL API |
-| `NEXT_PUBLIC_ROOT_DOMAIN` | `1section.com` | Deteksi subdomain |
+| `NEXT_PUBLIC_ROOT_DOMAIN` | `1section.com` | Root domain; dev pakai `localhost:3000` (`finance.localhost:3000`) |
 | `NEXT_PUBLIC_SITE_NAME` | `1Section` | Nama brand |
-| `NEXT_PUBLIC_USE_SUBDOMAINS` | auto | `true/false` paksa mode subdomain |
+| `NEXT_PUBLIC_USE_SUBDOMAINS` | `true` | `false` = pakai path `/niche/<slug>` (fallback) |
 | `NEXT_PUBLIC_PADDLE_ENV` | `sandbox` | Environment Paddle.js |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | — | Token publik Paddle.js |
 
@@ -122,8 +121,10 @@ src/
 ### 5.3 Checkout Success (`app/checkout/success/page.tsx`)
 - Client component, dibungkus `<Suspense>`.
 - Sumber `orderNumber`: query `?order=` → `localStorage` (`section_last_order`) → input manual.
-- Poll status; render badge status; saat `PAID` tampilkan link unduh (label + sisa kuota) ke `${apiUrl()}${download.url}`.
-- State: loading spinner, error box, "Waiting for payment confirmation".
+- **Bukti akses:** `?access=<token>` (magic-link) disimpan ke `sessionStorage`; bila belum ada, form "kirim tautan ke email" memanggil `POST /orders/:orderNumber/access-link`.
+- Poll `GET /orders/:orderNumber/status` (dengan `access`/`email`); saat `authorized && PAID` tampilkan link unduh (label + sisa kuota) ke `${apiUrl()}${download.url}`.
+- State: loading spinner, error box, "Waiting for payment confirmation", kartu status akses.
+- `StatusBadge` mendukung `PARTIALLY_REFUNDED`.
 
 ### 5.4 Admin Login (`app/admin/login/page.tsx`)
 - Form zod (email, password), `useAuth().login`, redirect ke `/admin`, tampilkan error server.
@@ -172,7 +173,7 @@ Lihat `docs/design-system.md` §3 (ThemeProvider + themeScript + ThemeToggle).
 | `useCreateNiche/useUpdateNiche/useDeleteNiche` | POST/PATCH/DELETE | invalidate `["admin","niches"]` |
 | `useAdminProducts()` | `GET /admin/products` | key `["admin","products"]` |
 | `useCreateProduct/useUpdateProduct/useDeleteProduct` | CRUD | invalidate products |
-| `useUploadPdf()` | `POST /admin/uploads` | multipart `FormData` (field `file`) |
+| `useUploadPdf()` | `POST /admin/uploads` | multipart `FormData` (field `file`) → metadata storage Cloudinary |
 | `useSyncProductPaddle()` | `POST /admin/products/:id/paddle-sync` | invalidate products |
 | `useArchiveProductPaddle()` | `POST .../paddle-archive` | invalidate products |
 | `useAdminOrders(filters)` | `GET /admin/orders` | `placeholderData` = data sebelumnya (pagination mulus) |
@@ -196,7 +197,7 @@ Lihat `docs/design-system.md` §3 (ThemeProvider + themeScript + ThemeToggle).
 - Loader singleton untuk Paddle.js; set `Environment.set("sandbox")` bila `PADDLE_ENV=sandbox`; `Initialize({ token })`. Reject bila token hilang / script gagal.
 
 ### `lib/site.ts`
-- `SITE_NAME`, `ROOT_DOMAIN`, `useSubdomains()`, `nicheUrl(slug)`, `apiUrl()`.
+- `SITE_NAME`, `ROOT_DOMAIN`, `useSubdomains()`, `isLocalRoot()`, `nicheUrl(slug)`, `apiUrl()`.
 
 ### `lib/server-api.ts`
 - `getNiches()`, `getNiche(slug)`, `getProduct(slug)` dengan revalidate & fallback `null`.

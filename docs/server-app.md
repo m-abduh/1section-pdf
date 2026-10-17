@@ -19,7 +19,7 @@ morgan(prod ? "combined" : "dev")
 POST /api/webhooks  → express.raw({ type: "application/json", limit:"1mb" }) → webhookRouter
 express.json({ limit: "2mb" })
 express.urlencoded({ extended: true })
-express.static("/uploads", uploadDir)
+/admin/uploads → multer memoryStorage (di router)
 /api → apiRouter
 notFoundHandler → errorHandler
 app.set("trust proxy", 1)
@@ -49,6 +49,17 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 | `PADDLE_TAX_CATEGORY` | string | `standard` |
 | `DOWNLOAD_TOKEN_TTL_HOURS` | int > 0 | `72` |
 | `DOWNLOAD_MAX_HITS` | int > 0 | `5` |
+| `APP_URL` | url (opsional) | `CLIENT_URL` |
+| `DOWNLOAD_SIGNED_URL_TTL_MINUTES` | int > 0 | `10` |
+| `ACCESS_LINK_TTL_MINUTES` | int > 0 | `60` |
+| `CLOUDINARY_CLOUD_NAME` | string (opsional) | — |
+| `CLOUDINARY_API_KEY` | string (opsional) | — |
+| `CLOUDINARY_API_SECRET` | string (opsional) | — |
+| `CLOUDINARY_FOLDER` | string | `1section/bundles` |
+| `EMAIL_PROVIDER` | `resend`/`log` | `log` |
+| `RESEND_API_KEY` | string (opsional) | — |
+| `EMAIL_FROM` | string | `1section <no-reply@1section.com>` |
+| `RATE_LIMIT_DISABLED` | bool (opsional) | `false` |
 
 (Seed memakai `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` — dibaca langsung di `seed.ts`.)
 
@@ -75,8 +86,11 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 | File | Isi |
 | --- | --- |
 | `prisma.ts` | Singleton `PrismaClient` (disimpan di `globalThis` saat non-prod); log `warn,error` dev / `error` prod. |
-| `jwt.ts` | `signAuthToken({ sub, email, role })`, `verifyAuthToken` (throw `401` bila invalid/expired). |
+| `jwt.ts` | `signAuthToken({ sub, email, role, tokenVersion })`, `verifyAuthToken` (throw `401` bila invalid/expired). |
 | `paddle.ts` | Instance `Paddle(env.PADDLE_API_KEY, { environment })` + `paddleWebhookSecret`. |
+| `cloudinary.ts` | Klien Cloudinary (lazy), `isCloudinaryConfigured`, `uploadPrivatePdf(buffer, name)`, `signedDownloadUrl(publicId, opts)`. |
+| `email.ts` | `sendAccessLinkEmail({ to, orderNumber, url })` — provider `resend` (via fetch) atau `log` (dev). |
+| `audit.ts` | `recordAudit({ actorId, action, entity, entityId, metadata? })` → tulis `AuditLog` (best-effort). |
 
 ---
 
@@ -108,14 +122,17 @@ GET  /api/health
 webhook terpisah: /api/webhooks/paddle
 ```
 
+Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit diterapkan pada login, checkout, status order, access-link, dan download.
+
 ---
 
 ## 7. Modul (pola routes → controller → service → schema)
 
 ### 7.1 `auth`
-- **routes:** `POST /login` (validate body), `GET /me` (requireAuth).
-- **service:** `login` (cari user by email lowercase, cek `isActive`, `bcrypt.compare`, sign JWT), `getProfile`, `hashPassword`.
-- **schema:** `loginSchema` (email, password).
+- **routes:** `POST /login` (validate body, rate-limited), `GET /me` (requireAuth), `POST /logout` (requireAuth).
+- **service:** `login` (cari user by email lowercase, cek `isActive`, `bcrypt.compare`, sign JWT dengan `tokenVersion`), `getProfile`, `hashPassword`, `logout` (naikkan `tokenVersion` → cabut semua token).
+- **middleware:** `requireAuth` memverifikasi JWT lalu **re-validasi ke DB** (user aktif + `tokenVersion` cocok); `requireRole` untuk otorisasi peran.
+- **schema:** `loginSchema` (email, password min 8 + huruf + angka).
 
 ### 7.2 `niches`
 - **routes public:** `GET /`, `GET /:slug`. **admin:** list/create/patch/delete (semua `requireAuth`).
@@ -125,7 +142,8 @@ webhook terpisah: /api/webhooks/paddle
 ### 7.3 `products`
 - **routes public:** `GET /?niche=`, `GET /:slug`. **admin:** list/create/patch/delete + `paddle-sync`, `paddle` (get), `paddle-archive`.
 - **service:** `listPublicProducts(nicheSlug?)`, `listAdminProducts` (+`_count.orderItems`), `getPublicProductBySlug`, CRUD. `createProduct`/`updateProduct` menyusun `features` & `files`; update `files` = replace-all.
-- **controller:** setelah create/update → `syncProductToPaddle` (best-effort, warning bila gagal), refresh & kirim produk.
+- **response publik** memakai `publicProductSelect` → **tidak** mengekspos `paddleProductId`/`paddlePriceId`/`storageKey`/`fileUrl` (file hanya `{ id, name, sortOrder, format }`).
+- **controller:** setelah create/update → `syncProductToPaddle` (best-effort, warning bila gagal), refresh & kirim produk; aksi tulis mencatat `AuditLog`.
 - **schema:** validasi lengkap (lihat `api-spec.md` §5).
 
 ### 7.4 `paddle` (catalog)
@@ -136,28 +154,28 @@ webhook terpisah: /api/webhooks/paddle
 - Detail di `docs/paddle-integration.md`.
 
 ### 7.5 `checkout`
-- **routes:** `POST /` (validate body).
-- **service:** `createCheckout` — buat Order PENDING + OrderItem, panggil `paddle.transactions.create`, simpan `paddleTransactionId`, kembalikan `checkoutUrl`; gagal → order `FAILED` + `PADDLE_ERROR`.
+- **routes:** `POST /` (validate body, rate-limited).
+- **service:** `createCheckout` — buat Order PENDING + OrderItem (`lineTotal`, `productTitle`) + `Payment` PENDING, panggil `paddle.transactions.create`, simpan `paddleTransactionId`, kembalikan `checkoutUrl`; gagal → order `FAILED` + `PADDLE_ERROR`.
 - **schema:** `{ productId, email? }`.
 
 ### 7.6 `orders`
-- **routes public:** `GET /:orderNumber/status?email=`. **admin:** `GET /`, `GET /:id`.
-- **service:** `getOrderStatus` (validasi email, self-heal terbitkan token bila PAID & belum ada), `listAdminOrders` (filter status/search, paginate), `getAdminOrder`.
-- **schema:** param orderNumber/id, query email, filter list (page/pageSize/status/search).
+- **routes public:** `GET /:orderNumber/status` (bukti akses `access=` atau `email=`, rate-limited), `POST /:orderNumber/access-link` (rate-limited). **admin:** `GET /`, `GET /:id`, `POST /reconcile`.
+- **service:** `getOrderStatus` (access-aware: tanpa bukti valid → `authorized:false`, `downloads:[]`; dengan bukti & `PAID` → self-heal `fulfillOrder`), `requestAccessLink` (buat `AccessLink` + kirim email, respons generik anti-enumerasi), `listAdminOrders` (filter status/search, paginate), `getAdminOrder`, `reconcilePaidOrders`.
+- **schema:** param orderNumber/id, query access/email, filter list (page/pageSize/status/search).
 
 ### 7.7 `downloads`
-- **routes:** `GET /:token`.
-- **service:** `issueDownloadTokensForItem(orderItemId, productId)` (buat token per ProductFile, expiry & maxDownloads dari env), `resolveDownload(token)` (cek ada/expired/kuota, increment count, resolve nama & URL), `resolveLocalFile` (anti path traversal), `uploadDir` (export).
-- **controller:** redirect (eksternal) atau `res.download` (lokal, cek `fs.existsSync`).
+- **routes:** `GET /:token` (rate-limited).
+- **service:** `fulfillOrder(orderId)` (idempotent: buat `Entitlement` per `(orderItem, file)` + `DownloadToken`), `resolveDownload(token)` (cek token/entitlement ACTIVE/expired/kuota, increment **atomik**), resolver sumber file (Cloudinary signed URL / eksternal redirect / lokal stream).
+- **controller:** redirect 302 (Cloudinary/eksternal) atau `res.download` (lokal).
 
 ### 7.8 `webhooks`
 - **routes:** `POST /paddle` (raw body + `Paddle-Signature`) → `paddle.webhooks.unmarshal`.
-- **service:** `recordWebhookEvent` (idempotensi via `eventId`), `handlePaddleEvent` (switch eventType), `markOrderPaid` (resolve order via customData.orderId atau transactionId, resolve customer email, set PAID + paidAt, terbitkan token), `updateOrderStatus`.
+- **service:** `beginEvent` (idempotensi: `eventId` unique + status `RECEIVED`; `PROCESSED`→skip, `FAILED`→retry), `processEvent` (transaksi DB; `transaction.completed` → validasi payload + order `PAID` + `Payment COMPLETED` + `fulfillOrder`; failed/canceled; `adjustment.*` refund/chargeback), `markProcessed`/`markFailed`, `reconcilePaidOrders`. Logika murni divalidasi unit test di `webhook.logic.ts`/`webhook.logic.test.ts`.
 - Lihat `docs/paddle-integration.md` §webhook.
 
 ### 7.9 `uploads`
-- **routes:** `POST /` (requireAuth) → multer `diskStorage` ke `uploadDir`, nama `<uuid><ext>`, batas 50 MB, filter MIME PDF.
-- Response `{ url, size, originalName }`.
+- **routes:** `POST /` (requireAuth) → multer `memoryStorage`, batas 50 MB, filter MIME PDF + **validasi magic bytes `%PDF-`**.
+- **service:** `uploadPrivatePdf` ke Cloudinary (`type=authenticated`) → metadata `{ provider, storageKey, resourceType, format, bytes, checksum }`; `503 STORAGE_NOT_CONFIGURED` bila Cloudinary belum diatur; aksi dicatat di `AuditLog`.
 
 ### 7.10 `stats`
 - **routes:** `GET /` (requireAuth) → `getDashboardStats` (counts + SUM revenue + 5 order terbaru).
@@ -198,10 +216,12 @@ POST /api/checkout
 ```
 POST /api/webhooks/paddle
  → verify signature
- → recordWebhookEvent (idempotensi)
- → handlePaddleEvent('transaction.completed')
-    → markOrderPaid → order PAID + issueDownloadTokensForItem (per item)
- → 200
+ → beginEvent (idempotensi, status RECEIVED)
+ → processEvent('transaction.completed')
+    → validasi payload vs order
+    → order PAID + Payment COMPLETED + fulfillOrder (Entitlement + DownloadToken per item)
+ → markProcessed → 200
+   (gagal: markFailed + 500 → Paddle retry)
 ```
 
 ---
@@ -214,8 +234,11 @@ POST /api/webhooks/paddle
 | build | `tsc -p tsconfig.json` → `dist/` |
 | start | `node dist/index.js` |
 | typecheck | `tsc --noEmit` |
+| test | `vitest run` |
+| lint | `eslint .` (root) |
 | prisma | `prisma generate/migrate dev/migrate deploy/studio` |
 | seed | `tsx prisma/seed.ts` |
+| reconcile | `tsx src/scripts/reconcile.ts` |
 
 Root menjalankan lewat workspaces (`npm run dev:server`, dsb).
 
@@ -223,6 +246,7 @@ Root menjalankan lewat workspaces (`npm run dev:server`, dsb).
 
 ## 11. Catatan Teknis
 
-- Upload & file PDF disimpan **lokal** (`server/uploads/`) — lihat `docs/operations.md` untuk pertimbangan produksi (ephemeral filesystem).
+- PDF disimpan di **Cloudinary** (privat) dan diakses via signed URL berumur pendek — lihat `docs/operations.md` §8.
 - Webhook di-mount **sebelum** `express.json` agar `req.body` tetap `Buffer` untuk verifikasi signature.
+- Test (Vitest + Supertest) ada di `src/**/*.test.ts`; `tsconfig.json` mengecualikan test dari build.
 - `tsconfig` server: `target ES2022`, `module CommonJS`, `strict`, `noUncheckedIndexedAccess`, `outDir dist`.

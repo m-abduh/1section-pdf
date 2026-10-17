@@ -28,7 +28,27 @@ export async function getNicheBySlug(slug: string, onlyActive = true) {
       products: {
         where: onlyActive ? { active: true } : {},
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        include: { files: { orderBy: { sortOrder: "asc" } } },
+        select: {
+          id: true,
+          nicheId: true,
+          slug: true,
+          name: true,
+          summary: true,
+          description: true,
+          coverImage: true,
+          priceAmount: true,
+          compareAtAmount: true,
+          currency: true,
+          features: true,
+          active: true,
+          sortOrder: true,
+          createdAt: true,
+          updatedAt: true,
+          files: {
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, name: true, sortOrder: true, format: true },
+          },
+        },
       },
     },
   });

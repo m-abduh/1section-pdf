@@ -22,16 +22,15 @@
                  │  Next.js 16 (client) │  ← SSR/RSC + ISR + middleware proxy
                  │  App Router          │
                  └──────────┬───────────┘
-                            │ REST /api/*  (JSON, Axios)
-                            │ /uploads/* (rewrite ke server)
+                             │ REST /api/*  (JSON, Axios)
                  ┌──────────▼───────────┐
                  │  Express 5 (server)  │  ← REST API, auth, webhook
                  │  Prisma ORM          │
-                 └────┬─────────────┬───┘
-                      │             │
-              ┌───────▼──┐   ┌──────▼──────┐
-              │PostgreSQL│   │local uploads│
-              └──────────┘   └─────────────┘
+                 └────┬──────────┬──────┘
+                      │          │
+              ┌───────▼──┐   ┌───▼──────────────┐
+              │PostgreSQL│   │ Cloudinary (PDF) │
+              └──────────┘   └──────────────────┘
                       │
                       │ Paddle API (products, prices, transactions)
                       │ Paddle Webhooks ──► POST /api/webhooks/paddle
@@ -55,7 +54,7 @@ Monorepo **npm workspaces** (`client`, `server`) dijoinkan lewat `concurrently`.
 ├── .gitignore
 │
 ├── client/                 # Next.js 16 App Router
-│   ├── next.config.ts      # allowedDevOrigins, remotePatterns, rewrite /uploads
+│   ├── next.config.ts      # allowedDevOrigins, remotePatterns (res.cloudinary.com), images
 │   ├── postcss.config.mjs  # @tailwindcss/postcss (satu plugin, tanpa opsi)
 │   ├── tsconfig.json       # strict, path alias @/* -> ./src/*
 │   ├── next-env.d.ts       # generated Next (jangan diedit)
@@ -74,19 +73,19 @@ Monorepo **npm workspaces** (`client`, `server`) dijoinkan lewat `concurrently`.
     ├── tsconfig.json       # CommonJS, outDir dist
     ├── .gitignore          # node_modules, dist, .env*, uploads/* (!.gitkeep), *.log, *.tsbuildinfo
     ├── .env / .env.example
-    ├── uploads/            # file PDF tersimpan (gitignored, hanya .gitkeep yang dilacak)
     ├── prisma/
     │   ├── schema.prisma
     │   ├── seed.ts
-    │   └── migrations/     # 3 migration + migration_lock.toml (provider = postgresql)
+    │   └── migrations/     # 4 migration + migration_lock.toml (provider = postgresql)
     └── src/
         ├── index.ts        # bootstrap + graceful shutdown
         ├── app.ts          # express app (middleware global)
         ├── config/env.ts   # validasi env (zod)
         ├── routes/index.ts # mount semua router
         ├── modules/        # per-domain (auth, niches, products, checkout, orders, downloads, webhooks, uploads, stats, paddle)
-        ├── middlewares/    # auth, validate, error
-        ├── lib/            # prisma, jwt, paddle
+        ├── middlewares/    # auth, rate-limit, validate, error
+        ├── lib/            # prisma, jwt, paddle, cloudinary, email, audit
+        ├── scripts/        # reconcile (rekonsiliasi entitlement)
         ├── utils/          # api-error, ids, slug
         └── types/          # express.d.ts (Request.admin)
 ```
@@ -95,13 +94,14 @@ Monorepo **npm workspaces** (`client`, `server`) dijoinkan lewat `concurrently`.
 
 | Path | Jenis | Peran |
 | --- | --- | --- |
-| `.gitignore` (root) | config | Abaikan `node_modules`, `dist`, `.next`, `.env*` (kecuali `.env.example`), `server/uploads/*` (kecuali `.gitkeep`), `*.log`, `*.tsbuildinfo` |
+| `.gitignore` (root) | config | Abaikan `node_modules`, `dist`, `.next`, `.env*` (kecuali `.env.example`), `*.log`, `*.tsbuildinfo` |
 | `client/.gitignore`, `server/.gitignore` | config | Aturan ignore per-paket |
 | `client/postcss.config.mjs` | config | Satu plugin `@tailwindcss/postcss` |
 | `client/next-env.d.ts` | generated | Tipe Next (jangan diedit) |
 | `client/tsconfig.tsbuildinfo` | generated | Cache build TypeScript incremental |
 | `server/prisma/migrations/migration_lock.toml` | generated | Lock provider Prisma (`postgresql`) |
-| `server/uploads/` | data | PDF hasil upload (hanya `.gitkeep` yang dilacak git; saat ini berisi file PDF) |
+| `.github/workflows/ci.yml` | config | CI: Postgres service, migrate, lint, typecheck, test, build |
+| `eslint.config.mjs` | config | Flat ESLint config (root, semua workspace) |
 | `client/.next/`, `server/dist/`, `client/node_modules`+`server/node_modules` | build/deps | Hasil build & dependensi (tidak didokumentasi isinya) |
 | `package-lock.json` | lockfile | Dependensi terkunci |
 
@@ -122,7 +122,7 @@ Pola berlapis per modul: `*.routes.ts` (mapping + middleware) → `*.controller.
 PostgreSQL via Prisma. Single source of truth schema: `server/prisma/schema.prisma`. Lihat `docs/data-model.md`.
 
 ### 3.4 File Storage
-PDF disimpan lokal di `server/uploads/` (dibuat multer), di-serve statis oleh Express di `/uploads`. Client me-rewrite `/uploads/*` ke server agar URL relatif konsisten. Lihat `docs/operations.md` (§storage) untuk catatan produksi.
+PDF disimpan di **Cloudinary** sebagai aset privat (`type: authenticated`). Saat pembeli mengunduh, server membangun **signed URL** berumur pendek lalu redirect 302. Metadata storage disimpan pada `ProductFile` (`storageKey`, `resourceType`, `format`, `bytes`, `checksum`, `provider`). Provider `EXTERNAL`/`LOCAL` (dengan `fileUrl`) tetap didukung untuk kompatibilitas. Lihat `docs/operations.md` §8.
 
 ---
 
@@ -145,24 +145,25 @@ BuyButton → useCheckout.mutate
         → Prisma: simpan paddleTransactionId
      → 201 { orderNumber, transactionId, checkoutUrl }
   → Paddle.js Checkout.open({ transactionId, successUrl })
-  → (pembayaran) → Paddle webhook → order PAID + download tokens
-  → /checkout/success poll /api/orders/:orderNumber/status
+  → (pembayaran) → Paddle webhook → order PAID + Payment + fulfillOrder (Entitlement + tokens)
+  → /checkout/success poll /api/orders/:orderNumber/status?access=... (bukti akses)
 ```
 
 ### 4.3 Webhook (data masuk)
 ```
 Paddle → POST /api/webhooks/paddle (raw body + signature)
   → verify signature (paddle.webhooks.unmarshal)
-  → recordWebhookEvent (idempotensi via eventId unique)
-  → handlePaddleEvent → update Order + issueDownloadTokensForItem
+  → beginEvent (idempotensi: eventId unique + status RECEIVED/PROCESSED/FAILED)
+  → processEvent → update Order/Payment + fulfillOrder (Entitlement + token) → markProcessed
+  → gagal: markFailed + 500 (biar Paddle retry)
   → 200 { received: true }
 ```
 
 ### 4.4 Download
 ```
 Link → GET /api/downloads/:token
-  → resolveDownload (cek token, expiry, kuota) + increment count
-  → lokal: res.download(file); eksternal: redirect 302
+  → fulfill/cek token, expiry, kuota (increment atomik via updateMany)
+  → Cloudinary: signed URL + redirect 302; lokal: res.download; eksternal: redirect 302
 ```
 
 ---
@@ -171,20 +172,20 @@ Link → GET /api/downloads/:token
 
 Implementasi: `client/src/proxy.ts` (helper `proxy` + `config.matcher`).
 
-Matcher mengecualikan `api`, `_next/static`, `_next/image`, `favicon.ico`, `uploads`, dan semua path ber-ekstensi file.
+Matcher mengecualikan `api`, `_next/static`, `_next/image`, `favicon.ico`, dan semua path ber-ekstensi file.
 
 Logika:
 1. Ekstrak subdomain dari `Host` terhadap suffix `ROOT_DOMAIN`, `localhost`, `lvh.me` (hanya satu level subdomain; host dengan `www` diabaikan).
 2. `admin` → rewrite ke `/admin/*`.
-3. Subdomain lain → rewrite ke `/niche/<subdomain>/*` (kecuali path reserved: `/checkout`, `/admin`, `/api`, `/_next`, `/uploads`).
+3. Subdomain lain → rewrite ke `/niche/<subdomain>/*` (kecuali path reserved: `/checkout`, `/admin`, `/api`, `/_next`).
 4. Selain itu → `NextResponse.next()`.
 
 Konstanta terkait:
 - `ROOT_DOMAIN` = `NEXT_PUBLIC_ROOT_DOMAIN` (default `1section.com`).
 - `DEV_SUFFIXES` = `["localhost", "lvh.me"]`.
-- `RESERVED_PREFIXES` = `["/checkout", "/admin", "/api", "/_next", "/uploads"]`.
+- `RESERVED_PREFIXES` = `["/checkout", "/admin", "/api", "/_next"]`.
 
-`lib/site.ts` menyediakan `nicheUrl(slug)` yang menghasilkan URL subdomain di produksi dan path `/niche/<slug>` di dev (dikontrol `NEXT_PUBLIC_USE_SUBDOMAINS`).
+`lib/site.ts` menyediakan `nicheUrl(slug)` yang menghasilkan URL subdomain (`finance.1section.com` di produksi, `finance.localhost:3000` di dev; protokol otomatis `http` untuk localhost/lvh.me). Dikontrol `NEXT_PUBLIC_USE_SUBDOMAINS` + `NEXT_PUBLIC_ROOT_DOMAIN`.
 
 Di dev, Next mengizinkan host dev via `allowedDevOrigins` (`*.localhost`, `lvh.me`, `*.lvh.me`, `1section.com`, `*.1section.com`).
 
@@ -194,19 +195,21 @@ Di dev, Next mengizinkan host dev via `allowedDevOrigins` (`*.localhost`, `lvh.m
 
 | Area | Mekanisme |
 | --- | --- |
-| Password admin | bcryptjs (cost 10) |
-| Sesi | JWT HS256, expiry default `7d`, disimpan di localStorage client |
-| Middleware auth | `requireAuth` membaca `Authorization: Bearer`, set `req.admin` |
+| Password admin | bcryptjs (cost 10) + kebijakan minimal (8 char, huruf + angka) |
+| Sesi | JWT HS256, expiry default `7d`; `AdminUser.tokenVersion` memungkinkan **logout/revoke** (setiap request re-validasi ke DB) |
+| Middleware auth | `requireAuth` (Bearer, re-validasi user + tokenVersion) & `requireRole` |
 | Validasi input | zod untuk body/query/params (`validate`), + validasi env saat boot |
 | Headers | `helmet` (dengan `crossOriginResourcePolicy: cross-origin`) |
 | CORS | Whitelist + izinkan root domain & seluruh subdomain; izinkan localhost saat dev |
-| Webhook | Verifikasi `Paddle-Signature` + idempotensi `WebhookEvent.eventId` |
-| Download | Token acak 24 byte, expiry (`DOWNLOAD_TOKEN_TTL_HOURS`), batas `DOWNLOAD_MAX_HITS`; proteksi path traversal di `resolveLocalFile` |
-| Upload | Hanya `application/pdf`, maks 50 MB, nama file di-random UUID |
+| Rate limit | `express-rate-limit` pada login, checkout, status order, access-link, download |
+| Webhook | Verifikasi `Paddle-Signature` + idempotensi `WebhookEvent` (`RECEIVED`/`PROCESSED`/`FAILED`) + validasi payload vs snapshot order |
+| Download | `Entitlement` (ACTIVE/REVOKED) + token acak 24 byte, expiry, batas kuota dengan increment atomik; Cloudinary signed URL |
+| Upload | Hanya PDF, maks 50 MB, **cek magic bytes `%PDF-`**, disimpan privat di Cloudinary |
 | Error | Pesan generik di produksi; detail zod hanya untuk validasi |
+| Audit | `AuditLog` mencatat aksi admin penting |
 | Proxy | `trust proxy = 1` (di belakang reverse proxy) |
 
-Catatan: rate limiting belum ada. Lihat `prd.md` §kandidat evaluasi.
+Catatan: rate limiting in-memory (per-instance); untuk multi-instance produksi gunakan store terdistribusi (mis. Redis). Lihat `prd.md` §kandidat evaluasi.
 
 ---
 
@@ -219,9 +222,8 @@ Catatan: rate limiting belum ada. Lihat `prd.md` §kandidat evaluasi.
   3. `morgan` (combined di prod, dev di dev)
   4. `/api/webhooks` → `express.raw({ type: "application/json" })` + `webhookRouter` (**sebelum** JSON parser)
   5. `express.json({ limit: "2mb" })` + `urlencoded`
-  6. `express.static('/uploads')`
-  7. `/api` → `apiRouter`
-  8. `notFoundHandler` lalu `errorHandler`
+  6. `/api` → `apiRouter`
+  7. `notFoundHandler` lalu `errorHandler`
 - **Client boot:** `app/layout.tsx` menyuntikkan `themeScript` anti-flash, lalu `Providers` (Theme → QueryClient → Auth).
 
 ---

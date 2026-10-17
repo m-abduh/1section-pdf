@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { recordAudit } from "../../lib/audit";
 import * as productService from "./product.service";
 import {
   archiveProductInPaddle,
@@ -37,6 +38,14 @@ export async function create(req: Request, res: Response) {
   }
 
   const refreshed = await productService.getProductById(product.id);
+  await recordAudit({
+    adminId: req.admin?.id,
+    action: "product.create",
+    entity: "Product",
+    entityId: product.id,
+    metadata: { name: product.name, priceAmount: product.priceAmount },
+    req,
+  });
   res.status(201).json({ success: true, data: refreshed });
 }
 
@@ -58,11 +67,26 @@ export async function update(req: Request, res: Response) {
   }
 
   const refreshed = await productService.getProductById(product.id);
+  await recordAudit({
+    adminId: req.admin?.id,
+    action: "product.update",
+    entity: "Product",
+    entityId: product.id,
+    metadata: { name: product.name, priceAmount: product.priceAmount },
+    req,
+  });
   res.json({ success: true, data: refreshed });
 }
 
 export async function remove(req: Request, res: Response) {
   await productService.deleteProduct(req.params.id as string);
+  await recordAudit({
+    adminId: req.admin?.id,
+    action: "product.delete",
+    entity: "Product",
+    entityId: req.params.id as string,
+    req,
+  });
   res.json({ success: true, data: null });
 }
 

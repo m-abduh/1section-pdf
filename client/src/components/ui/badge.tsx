@@ -5,6 +5,7 @@ const statusClasses: Record<OrderStatus, string> = {
   PAID: "bg-fg text-surface ring-fg",
   FAILED: "bg-transparent text-fg ring-fg/40",
   CANCELED: "bg-surface-muted text-fg-muted ring-border",
+  PARTIALLY_REFUNDED: "bg-surface-muted text-fg ring-border",
   REFUNDED: "bg-surface-muted text-fg ring-border",
 };
 

@@ -17,8 +17,14 @@ export interface Niche {
 export interface ProductFile {
   id: string;
   name: string;
-  fileUrl: string;
   sortOrder: number;
+  format?: string | null;
+  provider?: "CLOUDINARY" | "LOCAL" | "EXTERNAL";
+  storageKey?: string | null;
+  resourceType?: string | null;
+  bytes?: number | null;
+  checksum?: string | null;
+  fileUrl?: string | null;
 }
 
 export interface Product {
@@ -52,6 +58,7 @@ export type OrderStatus =
   | "PAID"
   | "FAILED"
   | "CANCELED"
+  | "PARTIALLY_REFUNDED"
   | "REFUNDED";
 
 export interface DownloadLink {
@@ -73,10 +80,11 @@ export interface PublicOrderItem {
 export interface PublicOrder {
   orderNumber: string;
   status: OrderStatus;
-  email: string | null;
   total: number;
   currency: string;
   paidAt: string | null;
+  authorized: boolean;
+  hasEmail: boolean;
   items: PublicOrderItem[];
 }
 

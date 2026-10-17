@@ -60,7 +60,16 @@ export function ProductForm({
 }) {
   const uploadPdf = useUploadPdf();
   const [files, setFiles] = useState<ProductFileInput[]>(
-    product?.files.map((file) => ({ name: file.name, fileUrl: file.fileUrl })) ?? [],
+    product?.files.map((file) => ({
+      name: file.name,
+      provider: file.provider,
+      storageKey: file.storageKey,
+      resourceType: file.resourceType,
+      format: file.format,
+      bytes: file.bytes,
+      checksum: file.checksum,
+      fileUrl: file.fileUrl,
+    })) ?? [],
   );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -108,7 +117,15 @@ export function ProductForm({
         const result = await uploadPdf.mutateAsync(file);
         setFiles((previous) => [
           ...previous,
-          { name: stripExtension(file.name), fileUrl: result.url },
+          {
+            name: result.name || stripExtension(file.name),
+            provider: result.provider,
+            storageKey: result.storageKey,
+            resourceType: result.resourceType,
+            format: result.format,
+            bytes: result.bytes,
+            checksum: result.checksum,
+          },
         ]);
       }
     } catch (error) {
@@ -245,7 +262,7 @@ export function ProductForm({
           <ul className="mt-3 space-y-2">
             {files.map((file, index) => (
               <li
-                key={`${file.fileUrl}-${index}`}
+                key={`${file.storageKey ?? file.fileUrl ?? "file"}-${index}`}
                 className="flex items-center gap-2 rounded-lg bg-card p-2 ring-1 ring-border"
               >
                 <span className="grid size-7 shrink-0 place-items-center rounded bg-red-50 text-[10px] font-bold text-red-600">

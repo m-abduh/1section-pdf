@@ -4,10 +4,33 @@ import { ApiError } from "../../utils/api-error";
 import { slugify } from "../../utils/slug";
 import type { CreateProductInput, UpdateProductInput } from "./product.schema";
 
-const publicInclude: Prisma.ProductInclude = {
+const publicFileSelect = {
+  id: true,
+  name: true,
+  sortOrder: true,
+  format: true,
+} satisfies Prisma.ProductFileSelect;
+
+// Public product payloads must never expose storage references or Paddle IDs.
+const publicProductSelect = {
+  id: true,
+  nicheId: true,
+  slug: true,
+  name: true,
+  summary: true,
+  description: true,
+  coverImage: true,
+  priceAmount: true,
+  compareAtAmount: true,
+  currency: true,
+  features: true,
+  active: true,
+  sortOrder: true,
+  createdAt: true,
+  updatedAt: true,
   niche: { select: { id: true, slug: true, name: true, accentColor: true } },
-  files: { orderBy: { sortOrder: "asc" } },
-};
+  files: { orderBy: { sortOrder: "asc" }, select: publicFileSelect },
+} satisfies Prisma.ProductSelect;
 
 export function listPublicProducts(nicheSlug?: string) {
   return prisma.product.findMany({
@@ -16,7 +39,7 @@ export function listPublicProducts(nicheSlug?: string) {
       ...(nicheSlug ? { niche: { slug: nicheSlug, active: true } } : {}),
     },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    include: publicInclude,
+    select: publicProductSelect,
   });
 }
 
@@ -34,7 +57,7 @@ export function listAdminProducts() {
 export async function getPublicProductBySlug(slug: string) {
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: publicInclude,
+    select: publicProductSelect,
   });
 
   if (!product || !product.active) {
@@ -66,6 +89,31 @@ async function ensureSlugAvailable(slug: string, ignoreId?: string) {
   }
 }
 
+type ProductFileInputShape = {
+  name: string;
+  provider?: "CLOUDINARY" | "LOCAL" | "EXTERNAL";
+  storageKey?: string | null;
+  resourceType?: string | null;
+  format?: string | null;
+  bytes?: number | null;
+  checksum?: string | null;
+  fileUrl?: string | null;
+};
+
+function toProductFileCreate(file: ProductFileInputShape, index: number) {
+  return {
+    name: file.name,
+    provider: file.provider ?? "EXTERNAL",
+    storageKey: file.storageKey ?? null,
+    resourceType: file.resourceType ?? null,
+    format: file.format ?? null,
+    bytes: file.bytes ?? null,
+    checksum: file.checksum ?? null,
+    fileUrl: file.fileUrl ?? null,
+    sortOrder: index,
+  };
+}
+
 export async function createProduct(input: CreateProductInput) {
   await assertNicheExists(input.nicheId);
 
@@ -93,11 +141,7 @@ export async function createProduct(input: CreateProductInput) {
 
   if (input.files && input.files.length > 0) {
     data.files = {
-      create: input.files.map((file, index) => ({
-        name: file.name,
-        fileUrl: file.fileUrl,
-        sortOrder: index,
-      })),
+      create: input.files.map((file, index) => toProductFileCreate(file, index)),
     };
   }
 
@@ -132,11 +176,7 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   if (input.files !== undefined) {
     data.files = {
       deleteMany: {},
-      create: input.files.map((file, index) => ({
-        name: file.name,
-        fileUrl: file.fileUrl,
-        sortOrder: index,
-      })),
+      create: input.files.map((file, index) => toProductFileCreate(file, index)),
     };
   }
 

@@ -42,6 +42,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     sub: user.id,
     email: user.email,
     role: user.role,
+    tokenVersion: user.tokenVersion,
   });
 
   return { token, user: toPublicUser(user) };
@@ -53,6 +54,13 @@ export async function getProfile(userId: string): Promise<AuthResult["user"]> {
     throw ApiError.notFound("Admin user not found");
   }
   return toPublicUser(user);
+}
+
+export async function revokeSessions(userId: string): Promise<void> {
+  await prisma.adminUser.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
 }
 
 export async function hashPassword(password: string): Promise<string> {

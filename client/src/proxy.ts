@@ -6,7 +6,7 @@ const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "1section.com")
 
 const DEV_SUFFIXES = ["localhost", "lvh.me"];
 
-const RESERVED_PREFIXES = ["/checkout", "/admin", "/api", "/_next", "/uploads"];
+const RESERVED_PREFIXES = ["/checkout", "/admin", "/api", "/_next"];
 
 function isReserved(pathname: string): boolean {
   return RESERVED_PREFIXES.some(
@@ -60,6 +60,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|uploads|.*\\..*).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

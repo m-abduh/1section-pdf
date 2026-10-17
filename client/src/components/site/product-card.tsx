@@ -74,7 +74,6 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="relative hidden min-h-[320px] overflow-hidden border-l border-border bg-surface-muted md:block">
           {product.coverImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={product.coverImage}
               alt={product.name}

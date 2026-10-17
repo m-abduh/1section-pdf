@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { apiUrl } from "@/lib/site";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -17,10 +17,15 @@ import { Input } from "@/components/ui/input";
 function SuccessContent() {
   const searchParams = useSearchParams();
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [manual, setManual] = useState("");
+  const [email, setEmail] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const fromQuery = searchParams.get("order");
+    const access = searchParams.get("access");
+    if (access) setAccessToken(access);
     if (fromQuery) {
       setOrderNumber(fromQuery);
       return;
@@ -30,16 +35,32 @@ function SuccessContent() {
   }, [searchParams]);
 
   const orderQuery = useQuery({
-    queryKey: ["order-status", orderNumber],
+    queryKey: ["order-status", orderNumber, accessToken, email],
     enabled: Boolean(orderNumber),
     queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (accessToken) params.access = accessToken;
+      else if (email) params.email = email;
       const response = await api.get<{ data: PublicOrder }>(
         `/orders/${orderNumber}/status`,
+        { params },
       );
       return response.data.data;
     },
     refetchInterval: (query) =>
       query.state.data?.status === "PENDING" ? 3000 : false,
+  });
+
+  const requestLink = useMutation({
+    mutationFn: async () => {
+      await api.post(`/orders/${orderNumber}/access-link`, { email });
+    },
+    onSuccess: () => {
+      setNotice(
+        "If your email matches this order, a secure access link is on its way. Check your inbox.",
+      );
+    },
+    onError: (error) => setNotice(getApiErrorMessage(error)),
   });
 
   return (
@@ -117,7 +138,48 @@ function SuccessContent() {
             </div>
           ) : null}
 
-          {orderQuery.data.status === "PAID" ? (
+          {orderQuery.data.status === "PAID" && !orderQuery.data.authorized ? (
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h2 className="text-lg font-semibold text-fg">
+                Verify to unlock downloads
+              </h2>
+              <p className="mt-1 text-sm text-fg-muted">
+                Enter the email you used at checkout, or send yourself a secure
+                access link.
+              </p>
+              <form
+                className="mt-4 flex flex-col gap-2 sm:flex-row"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setNotice(null);
+                  setEmail(email.trim());
+                }}
+              >
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+                <Button type="submit">Unlock</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!email.includes("@") || requestLink.isPending}
+                  onClick={() => requestLink.mutate()}
+                >
+                  {requestLink.isPending ? <Spinner /> : null}
+                  Email me a link
+                </Button>
+              </form>
+              {notice ? (
+                <p className="mt-3 text-xs text-fg-muted">{notice}</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {orderQuery.data.status === "PAID" && orderQuery.data.authorized ? (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-fg">Your downloads</h2>
               {orderQuery.data.items.map((item) => (

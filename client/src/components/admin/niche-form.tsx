@@ -76,6 +76,7 @@ export function NicheForm({
       tagline: values.tagline || null,
       description: values.description || null,
       heroImage: values.heroImage || null,
+      accentColor: values.accentColor,
       featured: values.featured,
       active: values.active,
       sortOrder: values.sortOrder,
@@ -108,6 +109,10 @@ export function NicheForm({
 
       <Field label="Hero image URL" error={errors.heroImage?.message}>
         <Input placeholder="https://..." {...register("heroImage")} />
+      </Field>
+
+      <Field label="Accent color" error={errors.accentColor?.message}>
+        <Input type="color" className="h-9 w-20 p-1" {...register("accentColor")} />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-3">

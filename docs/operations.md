@@ -37,7 +37,8 @@ cp client/.env.example client/.env
 | `NODE_ENV` | `development` / `production` |
 | `PORT` | default `4000` |
 | `DATABASE_URL` | koneksi PostgreSQL |
-| `CLIENT_URL` | origin client (dipakai untuk URL download lokal) |
+| `CLIENT_URL` | origin client (fallback URL email) |
+| `APP_URL` | origin publik untuk tautan di email (opsional, default `CLIENT_URL`) |
 | `ROOT_DOMAIN` | `1section.com` |
 | `CORS_ORIGINS` | CSV origin tambahan |
 | `JWT_SECRET` | string acak panjang (>=16) |
@@ -48,15 +49,23 @@ cp client/.env.example client/.env
 | `PADDLE_TAX_CATEGORY` | default `standard` |
 | `DOWNLOAD_TOKEN_TTL_HOURS` | default `72` |
 | `DOWNLOAD_MAX_HITS` | default `5` |
+| `DOWNLOAD_SIGNED_URL_TTL_MINUTES` | masa berlaku signed URL Cloudinary, default `10` |
+| `ACCESS_LINK_TTL_MINUTES` | masa berlaku magic-link, default `60` |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | kredensial Cloudinary (PDF privat) |
+| `CLOUDINARY_FOLDER` | folder aset, default `1section/bundles` |
+| `EMAIL_PROVIDER` | `resend` / `log` |
+| `RESEND_API_KEY` | API key Resend (bila provider resend) |
+| `EMAIL_FROM` | pengirim email |
+| `RATE_LIMIT_DISABLED` | `true` hanya untuk test otomatis |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | akun seed |
 
 ### `client/.env`
 | Var | Keterangan |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | URL API |
-| `NEXT_PUBLIC_ROOT_DOMAIN` | root domain |
+| `NEXT_PUBLIC_ROOT_DOMAIN` | root domain (dev `localhost:3000`, prod `1section.com`) |
 | `NEXT_PUBLIC_SITE_NAME` | nama brand |
-| `NEXT_PUBLIC_USE_SUBDOMAINS` | `true`/`false`/kosong (auto) |
+| `NEXT_PUBLIC_USE_SUBDOMAINS` | `true` (default) / `false` = mode path `/niche/<slug>` |
 | `NEXT_PUBLIC_PADDLE_ENV` | `sandbox`/`production` |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | token publik Paddle.js |
 
@@ -77,7 +86,7 @@ Produksi:
 npm run prisma:deploy       # apply migration yang sudah ada
 ```
 
-Migration yang ada (urut): `init` → `add_paddle_product_id` → `product_files_bundle`. Lihat `docs/data-model.md` §4.
+Migration yang ada (urut): `init` → `add_paddle_product_id` → `product_files_bundle` → `hardening_entities`. Lihat `docs/data-model.md` §4.
 
 ---
 
@@ -100,8 +109,8 @@ npm run typecheck      # typecheck server + client
 
 ### Akses Dev
 - Storefront: `http://localhost:3000`
-- Niche: `http://finance.localhost:3000` **atau** `http://localhost:3000/niche/finance`
-- Admin: `http://admin.localhost:3000` **atau** `http://localhost:3000/admin`
+- Niche: `http://finance.localhost:3000` (produksi: `https://finance.1section.com`)
+- Admin: `http://admin.localhost:3000` (fallback path: `http://localhost:3000/admin`)
 
 `*.localhost` otomatis diizinkan (Next `allowedDevOrigins`, CORS server, resolver subdomain proxy). Alternatif: `lvh.me`.
 
@@ -115,8 +124,11 @@ npm run typecheck      # typecheck server + client
 | `npm run dev:server` / `dev:client` | salah satu |
 | `npm run build` / `build:server` / `build:client` | build |
 | `npm run typecheck` | typecheck keduanya |
+| `npm run lint` | ESLint (root, semua workspace) |
+| `npm test` | Vitest (server) |
 | `npm run prisma:generate` / `prisma:migrate` / `prisma:deploy` | Prisma |
 | `npm run db:seed` | seed |
+| `npm run reconcile -w server` | terbitkan ulang entitlement order `PAID` yang bolong |
 
 ---
 
@@ -135,20 +147,19 @@ Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.
 
 ## 8. Storage Upload (PDF)
 
-- PDF diunggah ke **filesystem lokal** `server/uploads/` dan diserve Express di `/uploads`.
-- Folder dilacak git hanya lewat `server/uploads/.gitkeep`; semua file PDF diabaikan (`.gitignore`). Saat ini folder sudah berisi beberapa PDF hasil upload.
-- Client me-rewrite `/uploads/*` ke server.
+- PDF kini disimpan di **Cloudinary** sebagai aset **privat** (`type: authenticated`, `resource_type: image`), bukan lagi di filesystem publik.
+- Endpoint `POST /api/admin/uploads` memverifikasi **magic bytes** `%PDF-`, ukuran (≤50 MB), lalu mengunggah ke Cloudinary dan menyimpan metadata (`storageKey`/public_id, `resourceType`, `format`, `bytes`, `checksum`) pada `ProductFile`.
+- File **tidak** punya URL publik tetap. Saat pembeli mengunduh, server membuat **signed URL** berumur pendek (`DOWNLOAD_SIGNED_URL_TTL_MINUTES`) lalu mengalihkan (`302`). Kuota unduh dinaikkan secara **atomik**.
+- Legacy/eksternal: `ProductFile` masih mendukung `provider = EXTERNAL/LOCAL` dengan `fileUrl` (`http(s)://` → redirect, `/uploads/...` → stream lokal). `/uploads` **tidak lagi** disajikan sebagai static publik.
 
-**Catatan produksi penting:**
-- Filesystem platform serverless (mis. Vercel Functions) bersifat **ephemeral** → file hilang saat redeploy/restart. Untuk produksi gunakan **disk persisten** (VPS + volume) atau **object storage** (S3/R2/GCS) dan simpan URL absolut pada `ProductFile.fileUrl` (backend sudah mendukung redirect untuk `http(s)://`).
-- Backup folder uploads secara berkala.
+**Catatan produksi:** pastikan kredensial Cloudinary diisi; tanpa itu endpoint upload mengembalikan `503 STORAGE_NOT_CONFIGURED`. Untuk migrasi file lokal lama, unggah ulang lewat admin (atau script migrasi) agar `provider` terisi.
 
 ---
 
 ## 9. Deployment (pola umum)
 
 1. **Database:** sediakan PostgreSQL terkelola; jalankan `prisma migrate deploy`.
-2. **Server API:** deploy `server` (build `tsc` → `dist`, start `node dist/index.js`), set env produksi, pastikan disk uploads persisten.
+2. **Server API:** deploy `server` (build `tsc` → `dist`, start `node dist/index.js`), set env produksi (termasuk kredensial Cloudinary & email). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
 3. **Client:** deploy `client` ke hosting Next.js; set `NEXT_PUBLIC_*` (di-bake saat build) dan wildcard domain.
 4. **Webhook:** daftarkan URL publik `https://<api-host>/api/webhooks/paddle` di Paddle, subscribe event, simpan secret.
 5. **Seed admin** sekali (atau buat admin manual) dan ganti password default.
@@ -160,20 +171,24 @@ Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.
 
 - API: `GET /api/health` → `{ status: "ok", time }`.
 - Log: `morgan` (combined di produksi).
-- Perhatikan tabel `webhook_events` untuk audit event Paddle yang masuk.
+- Perhatikan tabel `webhook_events`: `status = FAILED` (retry) atau `attempts` naik → ada masalah fulfillment. `status = RECEIVED` lama → proses menggantung.
+- Jalankan **reconciliation** berkala: `npm run reconcile -w server` (atau `POST /api/admin/orders/reconcile`) untuk menerbitkan entitlement yang bolong pada order `PAID`.
 - Pantau `orders` status `PENDING` yang menggantung (indikasi webhook bermasalah).
+- `AuditLog` mencatat aksi admin penting.
 
 ---
 
 ## 11. Checklist Rilis
 
 - [ ] `JWT_SECRET` kuat & unik produksi.
-- [ ] API key/token/webhook secret Paddle **production** (bukan sandbox).
+- [ ] API key/token/webhook secret Paddle **production** (bukan sandbox) — **rotate** bila pernah terpapar.
+- [ ] Kredensial Cloudinary diisi (`CLOUDINARY_*`).
+- [ ] Provider email aktif (`RESEND_API_KEY` + `EMAIL_FROM`, domain terverifikasi SPF/DKIM).
+- [ ] `APP_URL` menunjuk domain publik (untuk tautan magic-link).
 - [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + wildcard DNS + TLS.
 - [ ] `CORS_ORIGINS`/`ROOT_DOMAIN` benar.
 - [ ] Migration ter-apply (`prisma migrate deploy`).
-- [ ] Storage upload persisten + backup.
-- [ ] Password admin default diganti.
+- [ ] Password admin default diganti (kebijakan min 8 char + huruf + angka).
 - [ ] Webhook terdaftar & terverifikasi.
-- [ ] `npm run typecheck` & `npm run build` lulus.
+- [ ] `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` lulus.
 - [ ] Uji checkout sandbox → production dengan transaksi kecil.

@@ -4,7 +4,6 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { corsOrigins, env, isProduction } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middlewares/error";
-import { uploadDir } from "./modules/downloads/download.service";
 import { webhookRouter } from "./modules/webhooks/webhook.routes";
 import { apiRouter } from "./routes";
 
@@ -52,8 +51,6 @@ export function createApp() {
 
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
-
-  app.use("/uploads", express.static(uploadDir, { fallthrough: true }));
 
   app.use("/api", apiRouter);
 

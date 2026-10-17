@@ -6,7 +6,23 @@ import type { Product } from "@/lib/types";
 
 export interface ProductFileInput {
   name: string;
-  fileUrl: string;
+  provider?: "CLOUDINARY" | "LOCAL" | "EXTERNAL";
+  storageKey?: string | null;
+  resourceType?: string | null;
+  format?: string | null;
+  bytes?: number | null;
+  checksum?: string | null;
+  fileUrl?: string | null;
+}
+
+export interface UploadedPdf {
+  name: string;
+  provider: "CLOUDINARY";
+  storageKey: string;
+  resourceType: string;
+  format: string;
+  bytes: number;
+  checksum: string;
 }
 
 export interface ProductInput {
@@ -77,7 +93,7 @@ export function useUploadPdf() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await api.post<{ data: { url: string } }>(
+      const response = await api.post<{ data: UploadedPdf }>(
         "/admin/uploads",
         formData,
         { headers: { "Content-Type": "multipart/form-data" } },

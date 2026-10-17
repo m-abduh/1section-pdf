@@ -100,7 +100,7 @@ Daftar niche **aktif**, urut `sortOrder ASC, name ASC`, termasuk jumlah produk a
 ```
 
 ### `GET /api/niches/:slug`
-Detail niche + produk aktif (beserta `files`).
+Detail niche + produk aktif. File yang disertakan hanya `{ id, name, sortOrder, format }` (tanpa `storageKey`/`fileUrl`). **Tanpa** ID Paddle.
 **Params:** `slug` (string).
 **200:** `data` = niche + `products: Product[]`.
 **Errors:** `404 NOT_FOUND` bila tidak ada / non-aktif.
@@ -137,11 +137,11 @@ Menghapus niche + seluruh produknya (cascade). **200:** `{ "success": true, "dat
 ## 5. Products
 
 ### `GET /api/products?niche=<slug>`
-Daftar produk **aktif**; bila `niche` diberi, filter ke niche aktif tersebut. Include `niche` (id, slug, name, accentColor) + `files`.
+Daftar produk **aktif**; bila `niche` diberi, filter ke niche aktif tersebut. Include `niche` (id, slug, name, accentColor) + `files` terbatas (`{ id, name, sortOrder, format }`). **Tanpa** `paddleProductId`/`paddlePriceId`/`storageKey`/`fileUrl`.
 **200:** array Product.
 
 ### `GET /api/products/:slug`
-Detail produk publik. Include `niche` + `files`.
+Detail produk publik. Include `niche` + `files` terbatas. **Tanpa** ID Paddle / referensi storage.
 **Errors:** `404` bila non-aktif/tidak ada.
 
 ### `GET /api/admin/products` 🔒
@@ -163,7 +163,13 @@ Semua produk (termasuk non-aktif), urut `sortOrder ASC, createdAt DESC`, include
   "paddlePriceId": null,            // opsional <=120
   "features": ["...", "..."],       // opsional, maks 30, tiap item <=200
   "files": [                        // opsional, maks 50
-    { "name": "Budget Blueprint", "fileUrl": "/uploads/uuid.pdf" }
+    {
+      "name": "Budget Blueprint",
+      "provider": "CLOUDINARY",     // CLOUDINARY | LOCAL | EXTERNAL (opsional, default EXTERNAL)
+      "storageKey": "1section/bundles/budget-123", // public_id Cloudinary
+      "resourceType": "image", "format": "pdf", "bytes": 123456, "checksum": "sha256...",
+      "fileUrl": null               // untuk EXTERNAL/LOCAL
+    }
   ],
   "active": true,                   // opsional
   "sortOrder": 0                    // opsional
@@ -226,10 +232,12 @@ Membuat order lokal + Paddle transaction.
 
 ## 7. Orders
 
-### `GET /api/orders/:orderNumber/status?email=<email>`
-Status order publik + link unduhan (bila `PAID`).
-- Bila `order.email` diisi dan `email` query diberi dan berbeda → `403 FORBIDDEN`.
-- Bila `PAID` dan belum ada token, server menerbitkan token saat itu (self-heal).
+### `GET /api/orders/:orderNumber/status`
+Status order publik + link unduhan (bila `PAID` **dan** akses terbukti).
+- **Query bukti akses:** `access=<token>` (dari magic-link) **atau** `email=<email>`.
+- Bila tidak ada bukti yang cocok → response tetap `200` tetapi `authorized:false` dan `downloads:[]` (tidak membocorkan token / keberadaan email). **Rate-limited** (30/menit/IP).
+- Bila `PAID` dan `authorized`, server melakukan self-heal `fulfillOrder` (idempotent).
+- `email` pada response **dihapus** (hanya `hasEmail:boolean`).
 
 **200**
 ```json
@@ -238,10 +246,11 @@ Status order publik + link unduhan (bila `PAID`).
   "data": {
     "orderNumber": "ORD-20260101-000123",
     "status": "PAID",
-    "email": "buyer@example.com",
     "total": 2900,
     "currency": "USD",
     "paidAt": "2026-01-01T00:05:00.000Z",
+    "authorized": true,
+    "hasEmail": true,
     "items": [
       {
         "id": "clx...", "productName": "Personal Finance Bundle",
@@ -254,7 +263,13 @@ Status order publik + link unduhan (bila `PAID`).
   }
 }
 ```
-**Errors:** `404` (order tidak ada), `403` (email tidak cocok).
+**Errors:** `404` (order tidak ada), `429 RATE_LIMITED`.
+
+### `POST /api/orders/:orderNumber/access-link`
+Minta magic-link akses (email). **Rate-limited** (5/jam/IP).
+**Body:** `{ "email": "buyer@example.com" }`.
+**Perilaku:** bila order ada dan email cocok (atau order belum punya email), buat `AccessLink` (TTL `ACCESS_LINK_TTL_MINUTES`) dan kirim email berisi tautan `APP_URL/checkout/success?order=...&access=...`. Response **selalu generik** (anti-enumerasi).
+**200:** `{ "success": true, "data": { "sent": true } }`.
 
 ### `GET /api/admin/orders` 🔒
 List order ber-paginasi.
@@ -262,18 +277,24 @@ List order ber-paginasi.
 **200:** `data` = Order[] (+items), `pagination`.
 
 ### `GET /api/admin/orders/:id` 🔒
-Detail order, include `items` + `tokens` + `product.slug`.
+Detail order, include `items` (+ `tokens`, `entitlements`, `product.slug`) + `payments`.
 **Errors:** `404`.
+
+### `POST /api/admin/orders/reconcile` 🔒
+Menjalankan rekonsiliasi: menerbitkan ulang entitlement/token untuk order `PAID` yang bolong (idempotent).
+**200:** `{ "success": true, "data": { "repaired": 2 } }`.
 
 ---
 
 ## 8. Downloads
 
 ### `GET /api/downloads/:token`
-Mengunduh file.
-- Validasi: token ada (`404`), belum expired (`410 EXPIRED`), kuota (`403`), `fileUrl` ada (`404`).
-- Menaikkan `downloadCount` tiap request.
-- Jika `fileUrl` absolut (`http(s)://`) → **302 redirect**; jika lokal (`/uploads/...`) → `res.download(filePath, fileName)`.
+Mengunduh file. **Rate-limited** (60/menit/IP).
+- Validasi: token ada (`404`), entitlement tidak `REVOKED` (`403`), belum expired (`410 EXPIRED`), kuota.
+- Kuota dinaikkan **atomik** (`updateMany` dengan `downloadCount < maxDownloads`); bila gagal → `403`.
+- Sumber file:
+  - `provider=CLOUDINARY` → server membangun **signed URL** (`DOWNLOAD_SIGNED_URL_TTL_MINUTES`) lalu **302 redirect**.
+  - `fileUrl` absolut (`http(s)://`) → **302 redirect**; lokal (`/uploads/...`) → `res.download(filePath, fileName)`.
 
 Nama file: label + ekstensi `.pdf` bila belum ada, disanitasi (`[^a-zA-Z0-9._-]` → `-`).
 
@@ -282,12 +303,20 @@ Nama file: label + ekstensi `.pdf` bila belum ada, disanitasi (`[^a-zA-Z0-9._-]`
 ## 9. Uploads
 
 ### `POST /api/admin/uploads` 🔒
-`multipart/form-data`, field **`file`**. Hanya `application/pdf`, maks **50 MB**.
+`multipart/form-data`, field **`file`**. Hanya `application/pdf`, maks **50 MB**, **wajib lolos magic bytes `%PDF-`**. Diunggah ke Cloudinary (privat, `type=authenticated`).
 **201**
 ```json
-{ "success": true, "data": { "url": "/uploads/<uuid>.pdf", "size": 123456, "originalName": "guide.pdf" } }
+{
+  "success": true,
+  "data": {
+    "name": "guide",
+    "provider": "CLOUDINARY",
+    "storageKey": "1section/bundles/guide-1700000000000",
+    "resourceType": "image", "format": "pdf", "bytes": 123456, "checksum": "sha256..."
+  }
+}
 ```
-**Errors:** `400 BAD_FILE` (bukan PDF), `400` (tidak ada file).
+**Errors:** `400 BAD_FILE` (bukan PDF), `400 INVALID_PDF` (magic bytes tidak cocok), `400` (tidak ada file), `503 STORAGE_NOT_CONFIGURED` (Cloudinary belum dikonfigurasi).
 
 ---
 
@@ -321,15 +350,18 @@ Bukan endpoint publik biasa — dipanggil Paddle.
 - Header wajib **`Paddle-Signature`**; diverifikasi `paddle.webhooks.unmarshal(rawBody, secret, signature)`.
 
 **Perilaku:**
-1. Rekam event (`WebhookEvent`) — bila `eventId` sudah ada → respons `{ received:true, duplicate:true }` tanpa proses ulang.
-2. `handlePaddleEvent`:
-   - `transaction.completed` → order `PAID`, set `paidAt`, resolve email via Paddle customer, terbitkan `DownloadToken` per file.
-   - `transaction.payment_failed` → `FAILED`
-   - `transaction.canceled` → `CANCELED`
-   - `adjustment.created` → `REFUNDED`
+1. Rekam event (`WebhookEvent`, `status=RECEIVED`). Bila `eventId` sudah ada:
+   - `status=PROCESSED` → respons `{ received:true, duplicate:true }` tanpa proses ulang.
+   - `status=FAILED` → diproses ulang (retry).
+2. `processEvent` (dalam transaksi DB untuk perubahan order/payment):
+   - `transaction.completed` → **validasi** payload (status/currency/harga/qty/total) vs snapshot order, lalu order `PAID` + `Payment COMPLETED` + `fulfillOrder` (terbitkan `Entitlement` + `DownloadToken`, idempotent).
+   - `transaction.payment_failed` → `FAILED` (+ Payment `FAILED`)
+   - `transaction.canceled` → `CANCELED` (+ Payment `CANCELED`)
+   - `adjustment.created`/`adjustment.updated` → hanya `action=refund/chargeback` & `status=approved`; full → `REFUNDED` + cabut entitlement; sebagian → `PARTIALLY_REFUNDED`.
+3. Sukses → `status=PROCESSED`; gagal → `status=FAILED` + `error` dan respons **500** agar Paddle mengirim ulang.
 
 **200:** `{ "success": true, "data": { "received": true } }`
-**Errors:** `400` (header hilang / body bukan buffer / signature invalid).
+**Errors:** `400` (header hilang / body bukan buffer / signature invalid), `500` (proses gagal → retry).
 
 ---
 
@@ -338,15 +370,17 @@ Bukan endpoint publik biasa — dipanggil Paddle.
 | Method | Path | Auth | Deskripsi |
 | --- | --- | --- | --- |
 | GET | `/api/health` | — | Health check |
-| POST | `/api/auth/login` | — | Login admin |
+| POST | `/api/auth/login` | — | Login admin (rate-limited) |
 | GET | `/api/auth/me` | 🔒 | Profil admin |
+| POST | `/api/auth/logout` | 🔒 | Cabut sesi (naikkan `tokenVersion`) |
 | GET | `/api/niches` | — | Niche aktif |
 | GET | `/api/niches/:slug` | — | Detail niche + produk |
 | GET | `/api/products` | — | Produk aktif (filter `?niche=`) |
 | GET | `/api/products/:slug` | — | Detail produk publik |
-| POST | `/api/checkout` | — | Buat order + Paddle transaction |
-| GET | `/api/orders/:orderNumber/status` | — | Status order + downloads |
-| GET | `/api/downloads/:token` | — | Unduh file |
+| POST | `/api/checkout` | — | Buat order + Paddle transaction (rate-limited) |
+| GET | `/api/orders/:orderNumber/status` | bukti | Status order + downloads |
+| POST | `/api/orders/:orderNumber/access-link` | — | Kirim magic-link (rate-limited) |
+| GET | `/api/downloads/:token` | — | Unduh file (rate-limited) |
 | POST | `/api/webhooks/paddle` | sig | Webhook Paddle |
 | GET | `/api/admin/niches` | 🔒 | List niche (admin) |
 | POST | `/api/admin/niches` | 🔒 | Create niche |
@@ -356,6 +390,7 @@ Bukan endpoint publik biasa — dipanggil Paddle.
 | POST | `/api/admin/products` | 🔒 | Create product (+ sync Paddle) |
 | PATCH | `/api/admin/products/:id` | 🔒 | Update product (+ sync) |
 | DELETE | `/api/admin/products/:id` | 🔒 | Delete product |
+| POST | `/api/admin/orders/reconcile` | 🔒 | Rekonsiliasi entitlement order PAID |
 | POST | `/api/admin/products/:id/paddle-sync` | 🔒 | Sync ke Paddle |
 | GET | `/api/admin/products/:id/paddle` | 🔒 | State Paddle |
 | POST | `/api/admin/products/:id/paddle-archive` | 🔒 | Archive di Paddle |

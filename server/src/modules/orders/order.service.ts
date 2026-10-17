@@ -1,7 +1,10 @@
 import type { OrderStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { issueDownloadTokensForItem } from "../downloads/download.service";
+import { env } from "../../config/env";
+import { generateSecureToken } from "../../utils/ids";
+import { sendAccessLinkEmail } from "../../lib/email";
+import { fulfillOrder } from "../downloads/download.service";
 
 export interface PublicOrderItem {
   id: string;
@@ -20,61 +23,85 @@ export interface PublicOrderItem {
 export interface PublicOrder {
   orderNumber: string;
   status: OrderStatus;
-  email: string | null;
   total: number;
   currency: string;
   paidAt: Date | null;
+  authorized: boolean;
+  hasEmail: boolean;
   items: PublicOrderItem[];
+}
+
+export interface AccessProof {
+  email?: string;
+  accessToken?: string;
+}
+
+async function isAuthorized(orderId: string, orderEmail: string | null, proof: AccessProof) {
+  if (proof.accessToken) {
+    const link = await prisma.accessLink.findUnique({
+      where: { token: proof.accessToken },
+    });
+    if (
+      link &&
+      link.orderId === orderId &&
+      link.expiresAt.getTime() > Date.now()
+    ) {
+      if (!link.usedAt) {
+        await prisma.accessLink.update({
+          where: { id: link.id },
+          data: { usedAt: new Date() },
+        });
+      }
+      return true;
+    }
+  }
+
+  if (proof.email && orderEmail) {
+    return orderEmail.toLowerCase() === proof.email.toLowerCase();
+  }
+
+  return false;
 }
 
 export async function getOrderStatus(
   orderNumber: string,
-  email?: string,
+  proof: AccessProof,
 ): Promise<PublicOrder> {
   const order = await prisma.order.findUnique({
     where: { orderNumber },
-    include: {
-      items: {
-        include: { tokens: true },
-      },
-    },
+    include: { items: { include: { tokens: true } } },
   });
 
   if (!order) {
     throw ApiError.notFound("Order not found");
   }
 
-  if (order.email && email && order.email.toLowerCase() !== email.toLowerCase()) {
-    throw ApiError.forbidden("Email does not match this order");
-  }
+  const authorized = await isAuthorized(order.id, order.email, proof);
 
-  if (order.status === "PAID") {
-    for (const item of order.items) {
-      if (item.tokens.length === 0) {
-        const created = await issueDownloadTokensForItem(item.id, item.productId);
-        if (created > 0) {
-          item.tokens = await prisma.downloadToken.findMany({
-            where: { orderItemId: item.id },
-          });
-        }
-      }
-    }
+  if (order.status === "PAID" && authorized) {
+    // Self-heal: idempotently re-issue any missing entitlements/tokens.
+    await fulfillOrder(order.id);
+    order.items = await prisma.orderItem.findMany({
+      where: { orderId: order.id },
+      include: { tokens: true },
+    });
   }
 
   return {
     orderNumber: order.orderNumber,
     status: order.status,
-    email: order.email,
     total: order.total,
     currency: order.currency,
     paidAt: order.paidAt,
+    authorized,
+    hasEmail: Boolean(order.email),
     items: order.items.map((item) => ({
       id: item.id,
       productName: item.productName,
       quantity: item.quantity,
       unitAmount: item.unitAmount,
       downloads:
-        order.status === "PAID"
+        order.status === "PAID" && authorized
           ? item.tokens.map((token) => ({
               token: token.token,
               label: token.label,
@@ -85,6 +112,43 @@ export async function getOrderStatus(
           : [],
     })),
   };
+}
+
+/**
+ * Sends a magic access link. Response is always generic to avoid leaking
+ * whether an order number exists.
+ */
+export async function requestAccessLink(
+  orderNumber: string,
+  email: string,
+): Promise<void> {
+  const order = await prisma.order.findUnique({ where: { orderNumber } });
+  if (!order) return;
+
+  const normalized = email.toLowerCase();
+
+  if (order.email && order.email.toLowerCase() !== normalized) {
+    return;
+  }
+
+  if (!order.email) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { email: normalized },
+    });
+  }
+
+  const token = generateSecureToken(24);
+  await prisma.accessLink.create({
+    data: {
+      token,
+      orderId: order.id,
+      email: normalized,
+      expiresAt: new Date(Date.now() + env.ACCESS_LINK_TTL_MINUTES * 60 * 1000),
+    },
+  });
+
+  await sendAccessLinkEmail({ to: normalized, orderNumber, token });
 }
 
 export async function listAdminOrders(params: {
@@ -130,7 +194,14 @@ export async function getAdminOrder(id: string) {
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
-      items: { include: { tokens: true, product: { select: { slug: true } } } },
+      items: {
+        include: {
+          tokens: true,
+          entitlements: true,
+          product: { select: { slug: true } },
+        },
+      },
+      payments: true,
     },
   });
 

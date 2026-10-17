@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../../middlewares/auth";
+import { requireAuth, requireRole } from "../../middlewares/auth";
 import { validate } from "../../middlewares/validate";
 import * as nicheController from "./niche.controller";
 import {
@@ -20,7 +20,7 @@ nicheRouter.get(
 
 export const adminNicheRouter = Router();
 
-adminNicheRouter.use(requireAuth);
+adminNicheRouter.use(requireAuth, requireRole("admin"));
 adminNicheRouter.get("/", nicheController.listAdmin);
 adminNicheRouter.post(
   "/",
