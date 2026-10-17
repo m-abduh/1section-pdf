@@ -46,28 +46,29 @@ export async function sendAccessLinkEmail(params: {
   )}&access=${encodeURIComponent(params.token)}`;
 
   const text = [
-    `Here is your secure access link for order ${params.orderNumber}.`,
+    `Thanks for your purchase. Here is your access link for order ${params.orderNumber}.`,
     "",
     url,
     "",
-    "This link expires soon. If you did not request it, you can ignore this email.",
+    "Keep this email — you can use the link anytime to reach your downloads.",
+    "If you did not make this purchase, you can ignore this email.",
     "",
     "1section — Practical learning for real-world problems.",
   ].join("\n");
 
   const html = `
     <div style="font-family:system-ui,sans-serif;line-height:1.5">
-      <h2>Your access link</h2>
-      <p>Use the secure link below to access your purchased resources for order <strong>${params.orderNumber}</strong>.</p>
+      <h2>Thanks for your purchase</h2>
+      <p>Use the secure link below to access your resources for order <strong>${params.orderNumber}</strong>.</p>
       <p><a href="${url}" style="display:inline-block;padding:10px 16px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none">Open my resources</a></p>
-      <p style="color:#64748b;font-size:12px">If you did not request this, you can ignore this email.</p>
+      <p style="color:#64748b;font-size:12px">Keep this email — you can use the link anytime to reach your downloads. If you did not make this purchase, you can ignore this email.</p>
       <p style="color:#94a3b8;font-size:12px">1section — Practical learning for real-world problems.</p>
     </div>
   `;
 
   await sendEmail({
     to: params.to,
-    subject: `Your access link — 1section (${params.orderNumber})`,
+    subject: `Your downloads — 1section (${params.orderNumber})`,
     html,
     text,
   });

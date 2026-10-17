@@ -26,6 +26,7 @@ const envSchema = z.object({
   DOWNLOAD_MAX_HITS: z.coerce.number().int().positive().default(5),
   DOWNLOAD_SIGNED_URL_TTL_MINUTES: z.coerce.number().int().positive().default(10),
   ACCESS_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(60),
+  ORDER_ACCESS_TTL_HOURS: z.coerce.number().int().positive().default(720),
 
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),

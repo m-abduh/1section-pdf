@@ -285,7 +285,7 @@ model AccessLink {
   token     String    @unique
   orderId   String
   order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  email     String
+  email     String?
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())

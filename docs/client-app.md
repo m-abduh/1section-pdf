@@ -112,7 +112,7 @@ src/
 
 ### 5.1 Landing Utama (`app/page.tsx`)
 - Ambil semua niche aktif (tanpa filter).
-- Hero: badge "PRACTICAL LEARNING · ONE-TIME PURCHASE", H1 "Practical learning for the problems that actually matter", subtitle brand, 1 CTA (`#niches`).
+- Hero (2 kolom): badge "PRACTICAL LEARNING · ONE-TIME PURCHASE", H1 "You know the problem. Here's the plan.", sub "Focused, practical bundles for the problems you need to solve — one-time purchase, no fluff.", 1 CTA (`#niches`); kolom kanan peta area (grid 2×2: dot warna + nama + tagline tiap area, klik ke subdomain). Background monokrom (grid + spotlight).
 - Section `#niches`: satu `NicheSection` per niche (bergantian kiri/kanan) — landing page root berfokus **menjelaskan tiap niche** (tagline, deskripsi, audience, daftar masalah) + sebaris CTA "Explore N bundles" + chip sosial (ikon + `@1section.<slug>`) ke subdomain niche.
 - Empty state bila belum ada niche.
 
@@ -136,8 +136,8 @@ src/
 
 ### 5.3 Checkout Success (`app/checkout/success/page.tsx`)
 - Client component, dibungkus `<Suspense>`.
-- Sumber `orderNumber`: query `?order=` → `localStorage` (`section_last_order`) → input manual.
-- **Bukti akses:** `?access=<token>` (magic-link) disimpan ke `sessionStorage`; bila belum ada, form "kirim tautan ke email" memanggil `POST /orders/:orderNumber/access-link`.
+- Sumber referensi pesanan: query `?order=` **atau** `?_ptxn=`/`?txn=` (Paddle transaction ID) → `localStorage` (`section_last_order`) → input manual (`txn_...` atau `ORD-...`).
+- **Bukti akses:** `?access=<token>` (dari `successUrl` checkout, atau magic-link email) disimpan ke state; token ini membuat halaman langsung terotorisasi setelah bayar — **tanpa form verify**. Bila tidak ada token, tampil pesan + tombol "Resend access link" yang memanggil `POST /orders/:orderNumber/access-link` (body kosong → pakai email order).
 - Poll `GET /orders/:orderNumber/status` (dengan `access`/`email`); saat `authorized && PAID` tampilkan link unduh (label + sisa kuota) ke `${apiUrl()}${download.url}`.
 - State: loading spinner, error box, "Waiting for payment confirmation", kartu status akses.
 - `StatusBadge` mendukung `PARTIALLY_REFUNDED`.

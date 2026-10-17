@@ -21,6 +21,17 @@ export function SiteHeader({
   if (variant === "home") {
     return (
       <header className="sticky top-0 z-40 border-b border-border bg-surface/70 backdrop-blur-xl">
+        {niches.length > 0 ? (
+          <div
+            aria-hidden
+            className="h-[3px] w-full"
+            style={{
+              backgroundImage: `linear-gradient(90deg, ${niches
+                .map((n) => n.accentColor)
+                .join(", ")})`,
+            }}
+          />
+        ) : null}
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
@@ -42,12 +53,6 @@ export function SiteHeader({
                   {link.label}
                 </Link>
               ))}
-              <Link
-                href="/checkout/success"
-                className="text-sm font-medium text-fg-muted transition hover:text-fg"
-              >
-                Retrieve purchase
-              </Link>
             </nav>
             <ThemeToggle />
             <Link
@@ -61,9 +66,6 @@ export function SiteHeader({
 
         <div className="border-t border-border bg-surface-muted/60">
           <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 sm:px-6">
-            <span className="hidden shrink-0 py-3 text-xs font-semibold uppercase tracking-wide text-fg-muted sm:block">
-              Areas
-            </span>
             <nav className="flex flex-1 items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {niches.length === 0 ? (
                 <span className="px-2 py-1 text-sm text-fg-muted">
@@ -74,8 +76,12 @@ export function SiteHeader({
                   <a
                     key={niche.id}
                     href={nicheUrl(niche.slug)}
-                    className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-fg-muted transition hover:bg-card hover:text-fg"
+                    className="group inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-fg-muted transition hover:bg-card hover:text-fg"
                   >
+                    <span
+                      className="size-2 rounded-full transition group-hover:scale-125"
+                      style={{ backgroundColor: niche.accentColor }}
+                    />
                     {niche.name}
                   </a>
                 ))
@@ -119,6 +125,14 @@ export function SiteHeader({
               {link.label}
             </Link>
           ))}
+          {currentNicheName ? (
+            <Link
+              href="/checkout/success"
+              className="text-sm font-medium text-fg-muted transition hover:text-fg"
+            >
+              Retrieve purchase
+            </Link>
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-2">

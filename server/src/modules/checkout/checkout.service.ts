@@ -2,12 +2,14 @@ import { prisma } from "../../lib/prisma";
 import { paddle } from "../../lib/paddle";
 import { ApiError } from "../../utils/api-error";
 import { generateOrderNumber } from "../../utils/ids";
+import { createOrderAccessLink } from "../orders/order.service";
 import type { CreateCheckoutInput } from "./checkout.schema";
 
 export interface CheckoutResult {
   orderNumber: string;
   transactionId: string;
   checkoutUrl: string;
+  accessToken: string;
 }
 
 export async function createCheckout(
@@ -91,10 +93,13 @@ export async function createCheckout(
       }),
     ]);
 
+    const accessToken = await createOrderAccessLink(order.id, order.email);
+
     return {
       orderNumber: order.orderNumber,
       transactionId: transaction.id,
       checkoutUrl,
+      accessToken,
     };
   } catch (error) {
     await prisma.order.update({

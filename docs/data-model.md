@@ -194,14 +194,14 @@ Mekanisme akses file (bukan bukti kepemilikan). TTL `DOWNLOAD_TOKEN_TTL_HOURS`, 
 Index: `@@index([orderItemId])`, `@@index([expiresAt])`.
 
 ### 2.11 `AccessLink` → `access_links`
-Magic-link sekali pakai untuk memulihkan akses tanpa akun. TTL `ACCESS_LINK_TTL_MINUTES`.
+Magic-link / tautan akses pesanan (tanpa akun). Dibuat saat checkout (untuk `successUrl`) dan saat pembayaran `PAID` (dikirim ke email); TTL `ORDER_ACCESS_TTL_HOURS` (atau `ACCESS_LINK_TTL_MINUTES` untuk alur "kirim tautan").
 
 | Field | Tipe | Atribut |
 | --- | --- | --- |
 | `id` | String | PK, cuid |
 | `token` | String | unique |
 | `orderId` | String | FK → Order (onDelete Cascade) |
-| `email` | String | email tujuan |
+| `email` | String? | email tujuan (boleh kosong bila dibuat sebelum email diketahui) |
 | `expiresAt` | DateTime | |
 | `usedAt` | DateTime? | diisi saat dipakai |
 | `createdAt` | DateTime | now |
@@ -296,6 +296,8 @@ Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
 | `20261016110500_product_files_bundle` | Tabel `product_files`; `download_tokens.fileId/label/fileUrl`; migrasi `products.fileUrl` → `product_files`. |
 | `20261017120000_hardening_entities` | Enum `StorageProvider`, `PaymentStatus`, `EntitlementStatus`, `WebhookStatus`; nilai `OrderStatus.PARTIALLY_REFUNDED`; `admin_users.tokenVersion`; kolom storage pada `product_files` (`fileUrl` jadi nullable, unique `(productId, sortOrder)`); `orders.amountRefunded/refundedAt`; `order_items.lineTotal/productTitle`; `download_tokens.entitlementId`; `webhook_events.status/attempts/error/receivedAt`; tabel `payments`, `entitlements`, `access_links`, `audit_logs`. |
 | `20261017130000_learning_platform_models` | Enum `LearningLevel`; `niches.audience/problems`; `products` (audience, notFor, outcome, learnings, limitations, license, sampleUrl, level); `product_files.assetFileId`; tabel `asset_files`. |
+| `20261017140000_drop_niche_featured` | Hapus kolom `niches.featured` (tidak dipakai storefront). |
+| `20261017150000_access_link_email_optional` | `access_links.email` menjadi nullable (link dibuat saat checkout sebelum email diketahui). |
 
 > **Catatan:** pada environment dev, migrasi `20261017120000_hardening_entities` pernah gagal karena FK `download_tokens.fileId` yatim; DB dev di-reset (`prisma migrate reset --force`) sebelum migrasi learning platform diterapkan.
 

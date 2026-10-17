@@ -89,12 +89,12 @@ Archive price lalu product di Paddle (toleran error), set `active=false` lokal. 
 1. Validasi produk ada & aktif, dan punya `paddlePriceId` (jika tidak → `400`).
 2. Buat `Order` (PENDING) + `OrderItem` (snapshot nama/harga/priceId).
 3. `paddle.transactions.create({ items:[{ priceId, quantity:1 }], customData:{ orderId, orderNumber, productId } })`.
-4. Simpan `paddleTransactionId`; kembalikan `{ orderNumber, transactionId, checkoutUrl }`.
+4. Simpan `paddleTransactionId`; buat `AccessLink` (TTL `ORDER_ACCESS_TTL_HOURS`); kembalikan `{ orderNumber, transactionId, checkoutUrl, accessToken }`.
 5. Gagal → order `FAILED`, throw `PADDLE_ERROR` (502).
 
 ### 4.2 Client (`use-checkout.ts` + `lib/paddle.ts`)
 1. `POST /checkout` → simpan `orderNumber` ke localStorage (`section_last_order`).
-2. `successUrl = <origin>/checkout/success?order=<orderNumber>`.
+2. `successUrl = <origin>/checkout/success?order=<orderNumber>&access=<accessToken>` (agar halaman sukses langsung terotorisasi setelah bayar).
 3. `paddle.Checkout.open({ transactionId, settings:{ displayMode:"overlay", successUrl } })`.
 4. Bila Paddle.js gagal dimuat → fallback `window.location.href = checkoutUrl`.
 

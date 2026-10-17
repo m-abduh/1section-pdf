@@ -10,7 +10,7 @@ export const orderStatusQuerySchema = z.object({
 });
 
 export const accessLinkRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().optional(),
 });
 
 export const adminOrderListQuerySchema = z.object({

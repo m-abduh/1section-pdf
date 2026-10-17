@@ -99,6 +99,7 @@ export interface PublicOrderItem {
   productName: string;
   quantity: number;
   unitAmount: number;
+  hasFiles: boolean;
   downloads: DownloadLink[];
 }
 

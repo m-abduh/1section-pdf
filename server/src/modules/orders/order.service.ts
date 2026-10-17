@@ -11,6 +11,7 @@ export interface PublicOrderItem {
   productName: string;
   quantity: number;
   unitAmount: number;
+  hasFiles: boolean;
   downloads: {
     token: string;
     label: string;
@@ -67,9 +68,20 @@ export async function getOrderStatus(
   orderNumber: string,
   proof: AccessProof,
 ): Promise<PublicOrder> {
-  const order = await prisma.order.findUnique({
-    where: { orderNumber },
-    include: { items: { include: { tokens: true } } },
+  // `orderNumber` may be the store order number (ORD-...) or the Paddle
+  // transaction ID (txn_...) coming from Paddle's success redirect.
+  const order = await prisma.order.findFirst({
+    where: {
+      OR: [{ orderNumber }, { paddleTransactionId: orderNumber }],
+    },
+    include: {
+      items: {
+        include: {
+          tokens: true,
+          product: { select: { _count: { select: { files: true } } } },
+        },
+      },
+    },
   });
 
   if (!order) {
@@ -83,7 +95,10 @@ export async function getOrderStatus(
     await fulfillOrder(order.id);
     order.items = await prisma.orderItem.findMany({
       where: { orderId: order.id },
-      include: { tokens: true },
+      include: {
+        tokens: true,
+        product: { select: { _count: { select: { files: true } } } },
+      },
     });
   }
 
@@ -100,6 +115,7 @@ export async function getOrderStatus(
       productName: item.productName,
       quantity: item.quantity,
       unitAmount: item.unitAmount,
+      hasFiles: (item.product?._count?.files ?? 0) > 0,
       downloads:
         order.status === "PAID" && authorized
           ? item.tokens.map((token) => ({
@@ -115,19 +131,44 @@ export async function getOrderStatus(
 }
 
 /**
+ * Creates a long-lived access link for an order. Used to unlock the success
+ * page immediately after checkout and inside the purchase email.
+ */
+export async function createOrderAccessLink(
+  orderId: string,
+  email: string | null,
+): Promise<string> {
+  const token = generateSecureToken(24);
+  await prisma.accessLink.create({
+    data: {
+      token,
+      orderId,
+      email: email?.toLowerCase() ?? null,
+      expiresAt: new Date(
+        Date.now() + env.ORDER_ACCESS_TTL_HOURS * 60 * 60 * 1000,
+      ),
+    },
+  });
+  return token;
+}
+
+/**
  * Sends a magic access link. Response is always generic to avoid leaking
  * whether an order number exists.
  */
 export async function requestAccessLink(
   orderNumber: string,
-  email: string,
+  email?: string,
 ): Promise<void> {
   const order = await prisma.order.findUnique({ where: { orderNumber } });
   if (!order) return;
 
-  const normalized = email.toLowerCase();
+  // Prefer the email given in the request; otherwise use the email already on
+  // the order (collected at checkout / by Paddle).
+  const normalized = (email ?? order.email ?? "").toLowerCase();
+  if (!normalized) return;
 
-  if (order.email && order.email.toLowerCase() !== normalized) {
+  if (order.email && email && order.email.toLowerCase() !== normalized) {
     return;
   }
 

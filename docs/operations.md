@@ -51,6 +51,7 @@ cp client/.env.example client/.env
 | `DOWNLOAD_MAX_HITS` | default `5` |
 | `DOWNLOAD_SIGNED_URL_TTL_MINUTES` | masa berlaku signed URL Cloudinary, default `10` |
 | `ACCESS_LINK_TTL_MINUTES` | masa berlaku magic-link, default `60` |
+| `ORDER_ACCESS_TTL_HOURS` | masa berlaku tautan akses pesanan (checkout + email), default `720` |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | kredensial Cloudinary (PDF privat) |
 | `CLOUDINARY_FOLDER` | folder aset, default `1section/bundles` |
 | `EMAIL_PROVIDER` | `resend` / `log` |

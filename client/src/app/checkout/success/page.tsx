@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { apiUrl } from "@/lib/site";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -19,15 +19,16 @@ function SuccessContent() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [manual, setManual] = useState("");
-  const [email, setEmail] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const fromQuery = searchParams.get("order");
+    const txn = searchParams.get("_ptxn") ?? searchParams.get("txn");
     const access = searchParams.get("access");
     if (access) setAccessToken(access);
-    if (fromQuery) {
-      setOrderNumber(fromQuery);
+    const ref = fromQuery || txn;
+    if (ref) {
+      setOrderNumber(ref);
       return;
     }
     const stored = window.localStorage.getItem(LAST_ORDER_KEY);
@@ -35,12 +36,11 @@ function SuccessContent() {
   }, [searchParams]);
 
   const orderQuery = useQuery({
-    queryKey: ["order-status", orderNumber, accessToken, email],
+    queryKey: ["order-status", orderNumber, accessToken],
     enabled: Boolean(orderNumber),
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (accessToken) params.access = accessToken;
-      else if (email) params.email = email;
       const response = await api.get<{ data: PublicOrder }>(
         `/orders/${orderNumber}/status`,
         { params },
@@ -49,18 +49,6 @@ function SuccessContent() {
     },
     refetchInterval: (query) =>
       query.state.data?.status === "PENDING" ? 3000 : false,
-  });
-
-  const requestLink = useMutation({
-    mutationFn: async () => {
-      await api.post(`/orders/${orderNumber}/access-link`, { email });
-    },
-    onSuccess: () => {
-      setNotice(
-        "If your email matches this order, a secure access link is on its way. Check your inbox.",
-      );
-    },
-    onError: (error) => setNotice(getApiErrorMessage(error)),
   });
 
   return (
@@ -73,17 +61,17 @@ function SuccessContent() {
       </Link>
 
       <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-gradient">
-        Your purchase
+        Your downloads
       </h1>
       <p className="mt-2 text-sm text-fg-muted">
-        Bookmark this page or keep your order number to retrieve your downloads
-        later.
+        Enter your Paddle transaction ID below to access your purchase.
       </p>
 
       {!orderNumber ? (
         <div className="mt-8 rounded-2xl border border-border bg-card p-6">
           <p className="text-sm text-fg">
-            Enter your order number to retrieve a purchase.
+            Enter your Paddle transaction ID or order number to retrieve a
+            purchase.
           </p>
           <form
             className="mt-4 flex gap-2"
@@ -95,7 +83,7 @@ function SuccessContent() {
             <Input
               value={manual}
               onChange={(event) => setManual(event.target.value)}
-              placeholder="ORD-20260101-000123"
+              placeholder="txn_... or ORD-..."
             />
             <Button type="submit">Retrieve</Button>
           </form>
@@ -104,7 +92,7 @@ function SuccessContent() {
 
       {orderNumber && orderQuery.isLoading ? (
         <div className="mt-8 flex items-center gap-2 text-sm text-fg-muted">
-          <Spinner /> Loading order {orderNumber}...
+          <Spinner /> Loading your purchase...
         </div>
       ) : null}
 
@@ -140,48 +128,28 @@ function SuccessContent() {
 
           {orderQuery.data.status === "PAID" && !orderQuery.data.authorized ? (
             <div className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-fg">
-                Verify to unlock downloads
-              </h2>
+              <h2 className="text-lg font-semibold text-fg">Your downloads</h2>
               <p className="mt-1 text-sm text-fg-muted">
-                Enter the email you used at checkout, or send yourself a secure
-                access link.
+                Your payment is confirmed. Use the access link we emailed to you
+                to view your downloads here. If you lost the email, contact
+                support.
               </p>
-              <form
-                className="mt-4 flex flex-col gap-2 sm:flex-row"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setNotice(null);
-                  setEmail(email.trim());
-                }}
-              >
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  required
-                />
-                <Button type="submit">Unlock</Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!email.includes("@") || requestLink.isPending}
-                  onClick={() => requestLink.mutate()}
-                >
-                  {requestLink.isPending ? <Spinner /> : null}
-                  Email me a link
-                </Button>
-              </form>
-              {notice ? (
-                <p className="mt-3 text-xs text-fg-muted">{notice}</p>
-              ) : null}
             </div>
           ) : null}
 
           {orderQuery.data.status === "PAID" && orderQuery.data.authorized ? (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-fg">Your downloads</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-fg">
+                  Your downloads
+                </h2>
+                {orderQuery.data.hasEmail ? (
+                  <p className="mt-1 text-sm text-fg-muted">
+                    We also emailed your access link, so you can come back to
+                    these downloads anytime.
+                  </p>
+                ) : null}
+              </div>
               {orderQuery.data.items.map((item) => (
                 <div
                   key={item.id}
@@ -190,9 +158,16 @@ function SuccessContent() {
                   <p className="font-medium text-fg">{item.productName}</p>
                   <div className="mt-3 space-y-2">
                     {item.downloads.length === 0 ? (
-                      <p className="text-sm text-fg-muted">
-                        Preparing your download link...
-                      </p>
+                      item.hasFiles ? (
+                        <p className="text-sm text-fg-muted">
+                          Preparing your download link...
+                        </p>
+                      ) : (
+                        <p className="text-sm text-fg-muted">
+                          No file is attached to this item yet. Please contact
+                          support and we will sort it out.
+                        </p>
+                      )
                     ) : (
                       item.downloads.map((download) => (
                         <a

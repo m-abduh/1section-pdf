@@ -15,6 +15,7 @@ export interface CheckoutResult {
   orderNumber: string;
   transactionId: string;
   checkoutUrl: string;
+  accessToken: string;
 }
 
 export function useCheckout() {
@@ -30,7 +31,9 @@ export function useCheckout() {
         /* storage might be unavailable */
       }
 
-      const successUrl = `${window.location.origin}/checkout/success?order=${data.orderNumber}`;
+      const successUrl = `${window.location.origin}/checkout/success?order=${encodeURIComponent(
+        data.orderNumber,
+      )}&access=${encodeURIComponent(data.accessToken)}`;
 
       try {
         const paddle = await getPaddle();

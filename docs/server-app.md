@@ -52,6 +52,7 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 | `APP_URL` | url (opsional) | `CLIENT_URL` |
 | `DOWNLOAD_SIGNED_URL_TTL_MINUTES` | int > 0 | `10` |
 | `ACCESS_LINK_TTL_MINUTES` | int > 0 | `60` |
+| `ORDER_ACCESS_TTL_HOURS` | int > 0 | `720` |
 | `CLOUDINARY_CLOUD_NAME` | string (opsional) | — |
 | `CLOUDINARY_API_KEY` | string (opsional) | — |
 | `CLOUDINARY_API_SECRET` | string (opsional) | — |
@@ -156,12 +157,12 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 
 ### 7.5 `checkout`
 - **routes:** `POST /` (validate body, rate-limited).
-- **service:** `createCheckout` — buat Order PENDING + OrderItem (`lineTotal`, `productTitle`) + `Payment` PENDING, panggil `paddle.transactions.create`, simpan `paddleTransactionId`, kembalikan `checkoutUrl`; gagal → order `FAILED` + `PADDLE_ERROR`.
+- **service:** `createCheckout` — buat Order PENDING + OrderItem (`lineTotal`, `productTitle`) + `Payment` PENDING, panggil `paddle.transactions.create`, simpan `paddleTransactionId`, buat `AccessLink` (`accessToken`), kembalikan `checkoutUrl`; gagal → order `FAILED` + `PADDLE_ERROR`.
 - **schema:** `{ productId, email? }`.
 
 ### 7.6 `orders`
-- **routes public:** `GET /:orderNumber/status` (bukti akses `access=` atau `email=`, rate-limited), `POST /:orderNumber/access-link` (rate-limited). **admin:** `GET /`, `GET /:id`, `POST /reconcile`.
-- **service:** `getOrderStatus` (access-aware: tanpa bukti valid → `authorized:false`, `downloads:[]`; dengan bukti & `PAID` → self-heal `fulfillOrder`), `requestAccessLink` (buat `AccessLink` + kirim email, respons generik anti-enumerasi), `listAdminOrders` (filter status/search, paginate), `getAdminOrder`, `reconcilePaidOrders`.
+- **routes public:** `GET /:orderNumber/status` (param bisa `ORD-...` atau Paddle `txn_...`; bukti akses `access=` atau `email=`, rate-limited), `POST /:orderNumber/access-link` (rate-limited, `email` opsional → pakai email order). **admin:** `GET /`, `GET /:id`, `POST /reconcile`.
+- **service:** `getOrderStatus` (access-aware: tanpa bukti valid → `authorized:false`, `downloads:[]`; dengan bukti & `PAID` → self-heal `fulfillOrder`; tiap item menyertakan `hasFiles`), `createOrderAccessLink` (buat `AccessLink` TTL `ORDER_ACCESS_TTL_HOURS`; dipakai checkout & webhook), `requestAccessLink` (buat `AccessLink` + kirim email; `email` opsional, respons generik anti-enumerasi), `listAdminOrders` (filter status/search, paginate), `getAdminOrder`, `reconcilePaidOrders`.
 - **schema:** param orderNumber/id, query access/email, filter list (page/pageSize/status/search).
 
 ### 7.7 `downloads`
@@ -212,9 +213,10 @@ POST /api/checkout
  → checkout.service.createCheckout
     → find product (tolak non-aktif / tanpa priceId)
     → create Order(PENDING)+OrderItem
-    → paddle.transactions.create(customData)
-    → update Order.paddleTransactionId
- → 201 { orderNumber, transactionId, checkoutUrl }
+     → paddle.transactions.create(customData)
+     → update Order.paddleTransactionId
+     → createOrderAccessLink (accessToken)
+  → 201 { orderNumber, transactionId, checkoutUrl, accessToken }
 ```
 
 ### 9.3 Webhook → fulfillment
@@ -224,7 +226,8 @@ POST /api/webhooks/paddle
  → beginEvent (idempotensi, status RECEIVED)
  → processEvent('transaction.completed')
     → validasi payload vs order
-    → order PAID + Payment COMPLETED + fulfillOrder (Entitlement + DownloadToken per item)
+     → order PAID + Payment COMPLETED + fulfillOrder (Entitlement + DownloadToken per item)
+     → bila ada email: createOrderAccessLink + sendAccessLinkEmail (jika gagal, hanya di-log)
  → markProcessed → 200
    (gagal: markFailed + 500 → Paddle retry)
 ```

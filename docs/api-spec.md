@@ -233,10 +233,11 @@ Membuat order lokal + Paddle transaction.
 2. Buat `Order` (PENDING, `orderNumber` format `ORD-YYYYMMDD-NNNNNN`) + 1 `OrderItem`.
 3. `paddle.transactions.create({ items:[{priceId, quantity:1}], customData:{orderId, orderNumber, productId} })`.
 4. Simpan `paddleTransactionId`.
+5. Buat `AccessLink` berumur panjang (TTL `ORDER_ACCESS_TTL_HOURS`) → `accessToken` dipakai client untuk `successUrl`.
 
 **201**
 ```json
-{ "success": true, "data": { "orderNumber": "ORD-20260101-000123", "transactionId": "txn_...", "checkoutUrl": "https://..." } }
+{ "success": true, "data": { "orderNumber": "ORD-20260101-000123", "transactionId": "txn_...", "checkoutUrl": "https://...", "accessToken": "abc..." } }
 ```
 **Errors:** `400` (produk tidak tertaut Paddle / tanpa URL checkout), `404`, `502 PADDLE_ERROR` (gagal Paddle — order di-set `FAILED`).
 
@@ -246,10 +247,12 @@ Membuat order lokal + Paddle transaction.
 
 ### `GET /api/orders/:orderNumber/status`
 Status order publik + link unduhan (bila `PAID` **dan** akses terbukti).
-- **Query bukti akses:** `access=<token>` (dari magic-link) **atau** `email=<email>`.
+- **Param:** `orderNumber` boleh berupa kode order toko (`ORD-...`) **atau** Paddle transaction ID (`txn_...`) dari redirect Paddle.
+- **Query bukti akses:** `access=<token>` (dari `successUrl` checkout atau magic-link email) **atau** `email=<email>`.
 - Bila tidak ada bukti yang cocok → response tetap `200` tetapi `authorized:false` dan `downloads:[]` (tidak membocorkan token / keberadaan email). **Rate-limited** (30/menit/IP).
 - Bila `PAID` dan `authorized`, server melakukan self-heal `fulfillOrder` (idempotent).
 - `email` pada response **dihapus** (hanya `hasEmail:boolean`).
+- Tiap item punya `hasFiles:boolean` (produk punya `ProductFile` atau tidak). Bila `false`, klien menampilkan pesan "belum ada file" (bukan "preparing" terus-menerus).
 
 **200**
 ```json
@@ -267,6 +270,7 @@ Status order publik + link unduhan (bila `PAID` **dan** akses terbukti).
       {
         "id": "clx...", "productName": "Personal Finance Bundle",
         "quantity": 1, "unitAmount": 2900,
+        "hasFiles": true,
         "downloads": [
           { "token": "abc...", "label": "Budget Blueprint", "url": "/api/downloads/abc...", "remaining": 5, "expiresAt": "2026-01-04T00:05:00.000Z" }
         ]
@@ -278,9 +282,9 @@ Status order publik + link unduhan (bila `PAID` **dan** akses terbukti).
 **Errors:** `404` (order tidak ada), `429 RATE_LIMITED`.
 
 ### `POST /api/orders/:orderNumber/access-link`
-Minta magic-link akses (email). **Rate-limited** (5/jam/IP).
-**Body:** `{ "email": "buyer@example.com" }`.
-**Perilaku:** bila order ada dan email cocok (atau order belum punya email), buat `AccessLink` (TTL `ACCESS_LINK_TTL_MINUTES`) dan kirim email berisi tautan `APP_URL/checkout/success?order=...&access=...`. Response **selalu generik** (anti-enumerasi).
+Minta kirim ulang tautan akses (tanpa form verify). **Rate-limited** (5/jam/IP).
+**Body:** `{ "email": "buyer@example.com" }` (`email` opsional — bila kosong, pakai email yang tersimpan pada order).
+**Perilaku:** bila order ada, buat `AccessLink` (TTL `ACCESS_LINK_TTL_MINUTES`) dan kirim email berisi tautan `APP_URL/checkout/success?order=...&access=...`. Bila `email` diberikan dan berbeda dari email order, tidak dikirim. Response **selalu generik** (anti-enumerasi).
 **200:** `{ "success": true, "data": { "sent": true } }`.
 
 ### `GET /api/admin/orders` 🔒

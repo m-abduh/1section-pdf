@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { BundleCard } from "@/components/site/bundle-card";
 import { SocialLinks } from "@/components/site/social-links";
 import { getNiche, getNiches } from "@/lib/server-api";
-import { resourceUrl } from "@/lib/site";
-import { formatCurrency } from "@/lib/format";
-import { LEARNING_LEVEL_LABEL } from "@/lib/types";
 
 export const revalidate = 30;
 
@@ -115,41 +111,36 @@ export default async function NichePage({ params }: NichePageProps) {
               </div>
             </div>
 
-            {niche.products.length > 0 ? (
+            {niche.problems.length > 0 ? (
               <div
-                className="animate-fade-up rounded-3xl border border-border bg-card/80 p-3 shadow-2xl shadow-black/5 backdrop-blur dark:shadow-black/40"
+                className="animate-fade-up rounded-3xl border border-border bg-card/80 p-6 shadow-2xl shadow-black/5 backdrop-blur dark:shadow-black/40"
                 style={{ animationDelay: "200ms" }}
               >
-                <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-                    In this area
+                    What these bundles help with
                   </span>
                   <span
                     className="size-2 rounded-full"
                     style={{ backgroundColor: niche.accentColor }}
                   />
                 </div>
-                <div className="space-y-1">
-                  {niche.products.slice(0, 4).map((product) => (
-                    <Link
-                      key={product.id}
-                      href={resourceUrl(niche.slug, product.slug)}
-                      className="flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition hover:bg-surface-muted"
+                <ul className="mt-5 space-y-3">
+                  {niche.problems.map((problem) => (
+                    <li
+                      key={problem}
+                      className="flex items-start gap-3 text-sm text-fg-muted"
                     >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-fg">
-                          {product.name}
-                        </span>
-                        <span className="block text-xs text-fg-muted">
-                          {LEARNING_LEVEL_LABEL[product.level]}
-                        </span>
+                      <span
+                        className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white"
+                        style={{ backgroundColor: niche.accentColor }}
+                      >
+                        ✓
                       </span>
-                      <span className="shrink-0 text-sm font-semibold text-fg">
-                        {formatCurrency(product.priceAmount, product.currency)}
-                      </span>
-                    </Link>
+                      <span>{problem}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             ) : null}
           </div>
@@ -183,56 +174,6 @@ export default async function NichePage({ params }: NichePageProps) {
           )}
         </section>
 
-        {niche.problems.length > 0 ? (
-          <section className="border-y border-border bg-surface-muted">
-            <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-              <div className="max-w-2xl">
-                <h2 className="text-2xl font-bold tracking-tight text-fg">
-                  What these bundles help with
-                </h2>
-                <p className="mt-2 text-sm text-fg-muted">
-                  Situations people in {niche.name} are usually dealing with.
-                </p>
-              </div>
-              <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {niche.problems.map((problem) => (
-                  <li
-                    key={problem}
-                    className="flex items-start gap-3 rounded-2xl border border-border bg-card p-5 text-sm text-fg-muted"
-                  >
-                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-fg">
-                      ✓
-                    </span>
-                    {problem}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        ) : null}
-
-        <section className="border-t border-border">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 md:grid-cols-3">
-            <div>
-              <h3 className="font-semibold text-fg">One-time payment</h3>
-              <p className="mt-1 text-sm text-fg-muted">
-                Pay once for lifetime access. No recurring charges.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-fg">Secured by Paddle</h3>
-              <p className="mt-1 text-sm text-fg-muted">
-                Payments and taxes are handled by Paddle as merchant of record.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-fg">Instant access</h3>
-              <p className="mt-1 text-sm text-fg-muted">
-                A private access link appears right after checkout.
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
 
       <SiteFooter niches={niches ?? []} />

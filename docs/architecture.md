@@ -143,10 +143,10 @@ BuyButton → useCheckout.mutate
         → Prisma: create Order(PENDING) + OrderItem
         → Paddle: transactions.create(customData{orderId,...})
         → Prisma: simpan paddleTransactionId
-     → 201 { orderNumber, transactionId, checkoutUrl }
-  → Paddle.js Checkout.open({ transactionId, successUrl })
-  → (pembayaran) → Paddle webhook → order PAID + Payment + fulfillOrder (Entitlement + tokens)
-  → /checkout/success poll /api/orders/:orderNumber/status?access=... (bukti akses)
+   → 201 { orderNumber, transactionId, checkoutUrl, accessToken }
+   → Paddle.js Checkout.open({ transactionId, successUrl=/checkout/success?order=...&access=... })
+   → (pembayaran) → Paddle webhook → order PAID + Payment + fulfillOrder (Entitlement + tokens) + kirim email access link
+   → /checkout/success poll /api/orders/:orderNumber/status?access=... (langsung terotorisasi via accessToken)
 ```
 
 ### 4.3 Webhook (data masuk)
