@@ -6,6 +6,7 @@ import { checkoutRouter } from "../modules/checkout/checkout.routes";
 import { orderRouter, adminOrderRouter } from "../modules/orders/order.routes";
 import { downloadRouter } from "../modules/downloads/download.routes";
 import { adminUploadRouter } from "../modules/uploads/upload.routes";
+import { adminAssetRouter } from "../modules/assets/asset.routes";
 import { adminStatsRouter } from "../modules/stats/stats.routes";
 
 export const apiRouter = Router();
@@ -25,4 +26,5 @@ apiRouter.use("/admin/niches", adminNicheRouter);
 apiRouter.use("/admin/products", adminProductRouter);
 apiRouter.use("/admin/orders", adminOrderRouter);
 apiRouter.use("/admin/uploads", adminUploadRouter);
+apiRouter.use("/admin/assets", adminAssetRouter);
 apiRouter.use("/admin/stats", adminStatsRouter);

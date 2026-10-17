@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Product } from "@/lib/types";
+import type { LearningLevel, Product } from "@/lib/types";
 
 export interface ProductFileInput {
   name: string;
@@ -13,6 +13,7 @@ export interface ProductFileInput {
   bytes?: number | null;
   checksum?: string | null;
   fileUrl?: string | null;
+  assetFileId?: string | null;
 }
 
 export interface UploadedPdf {
@@ -23,6 +24,7 @@ export interface UploadedPdf {
   format: string;
   bytes: number;
   checksum: string;
+  assetFileId?: string;
 }
 
 export interface ProductInput {
@@ -31,6 +33,14 @@ export interface ProductInput {
   slug?: string;
   summary?: string | null;
   description?: string | null;
+  audience?: string | null;
+  notFor?: string | null;
+  outcome?: string | null;
+  learnings?: string[];
+  limitations?: string | null;
+  license?: string | null;
+  sampleUrl?: string | null;
+  level?: LearningLevel;
   coverImage?: string | null;
   priceAmount: number;
   compareAtAmount?: number | null;

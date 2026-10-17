@@ -34,7 +34,7 @@ const envSchema = z.object({
 
   EMAIL_PROVIDER: z.enum(["resend", "log"]).default("resend"),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("1Section <no-reply@1section.com>"),
+  EMAIL_FROM: z.string().default("1section <no-reply@1section.com>"),
 
   RATE_LIMIT_DISABLED: z
     .enum(["true", "false"])

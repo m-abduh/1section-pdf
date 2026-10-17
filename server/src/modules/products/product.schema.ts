@@ -9,7 +9,14 @@ export const productFileSchema = z.object({
   bytes: z.number().int().min(0).optional().nullable(),
   checksum: z.string().max(128).optional().nullable(),
   fileUrl: z.string().max(1000).optional().nullable(),
+  assetFileId: z.string().max(64).optional().nullable(),
 });
+
+export const learningLevelSchema = z.enum([
+  "FOUNDATIONS",
+  "PRACTICAL",
+  "ADVANCED",
+]);
 
 export const createProductSchema = z.object({
   nicheId: z.string().min(1),
@@ -20,6 +27,14 @@ export const createProductSchema = z.object({
   name: z.string().min(2).max(160),
   summary: z.string().max(300).optional().nullable(),
   description: z.string().max(20000).optional().nullable(),
+  audience: z.string().max(1000).optional().nullable(),
+  notFor: z.string().max(1000).optional().nullable(),
+  outcome: z.string().max(1000).optional().nullable(),
+  learnings: z.array(z.string().min(1).max(300)).max(50).optional(),
+  limitations: z.string().max(2000).optional().nullable(),
+  license: z.string().max(2000).optional().nullable(),
+  sampleUrl: z.string().max(500).optional().nullable(),
+  level: learningLevelSchema.optional(),
   coverImage: z.string().max(500).optional().nullable(),
   priceAmount: z.number().int().min(0),
   compareAtAmount: z.number().int().min(0).optional().nullable(),

@@ -9,9 +9,10 @@ export interface NicheInput {
   slug?: string;
   tagline?: string | null;
   description?: string | null;
+  audience?: string | null;
+  problems?: string[];
   heroImage?: string | null;
   accentColor?: string;
-  featured?: boolean;
   active?: boolean;
   sortOrder?: number;
 }

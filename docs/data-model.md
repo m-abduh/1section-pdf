@@ -1,4 +1,4 @@
-# Data Model — 1Section
+# Data Model — 1section
 
 > Skema database aktual (`server/prisma/schema.prisma`), relasi, index, aturan, riwayat migrasi, dan data seed. Database: **PostgreSQL**.
 
@@ -32,7 +32,7 @@ Akun untuk dashboard admin.
 | `auditLogs` | AuditLog[] | relasi |
 
 ### 2.2 `Niche` → `niches`
-Kategori sekaligus landasan subdomain landing page.
+Area masalah sekaligus landasan subdomain landing page.
 
 | Field | Tipe | Atribut |
 | --- | --- | --- |
@@ -40,8 +40,9 @@ Kategori sekaligus landasan subdomain landing page.
 | `slug` | String | unique (dipakai subdomain) |
 | `name` | String | |
 | `tagline` / `description` / `heroImage` | String? | |
+| `audience` | String? | siapa yang dilayani area ini |
+| `problems` | Json | default `[]` — daftar masalah nyata |
 | `accentColor` | String | default `#6366F1` |
-| `featured` | Boolean | default `false` |
 | `active` | Boolean | default `true` |
 | `sortOrder` | Int | default `0` |
 | `createdAt` / `updatedAt` | DateTime | |
@@ -50,7 +51,7 @@ Kategori sekaligus landasan subdomain landing page.
 Index: `@@index([active, sortOrder])`.
 
 ### 2.3 `Product` → `products`
-Bundle PDF yang dijual (satu produk = satu bundle file).
+Resource pembelajaran yang dijual (satu produk = satu bundle file).
 
 | Field | Tipe | Atribut |
 | --- | --- | --- |
@@ -58,6 +59,11 @@ Bundle PDF yang dijual (satu produk = satu bundle file).
 | `nicheId` | String | FK → Niche (onDelete Cascade) |
 | `slug` | String | unique |
 | `name` / `summary` / `description` / `coverImage` | String? | |
+| `audience` / `notFor` / `outcome` | String? | siapa tujuan, siapa bukan, hasil |
+| `learnings` | Json | default `[]` — poin yang dipelajari |
+| `limitations` / `license` | String? | batasan & lisensi |
+| `sampleUrl` | String? | tautan sampel gratis |
+| `level` | LearningLevel | default `FOUNDATIONS` |
 | `priceAmount` | Int | harga (cent) |
 | `compareAtAmount` | Int? | harga pembanding (cent) |
 | `currency` | String | default `"USD"` |
@@ -68,12 +74,15 @@ Bundle PDF yang dijual (satu produk = satu bundle file).
 | `sortOrder` | Int | default `0` |
 | `createdAt` / `updatedAt` | DateTime | |
 | `files` | ProductFile[] | relasi |
-| `orderItems` / `entitlements` | OrderItem[] / Entitlement[] | relasi |
+| `orderItems` / `entitlements` | relasi | |
 
 Index: `@@index([nicheId, active, sortOrder])`.
 
+### 2.3.1 `LearningLevel` (enum)
+`FOUNDATIONS` · `PRACTICAL` · `ADVANCED`
+
 ### 2.4 `ProductFile` → `product_files`
-File PDF di dalam sebuah bundle. Mendukung Cloudinary (privat) maupun URL eksternal/lokal.
+File di dalam sebuah bundle. Mendukung Cloudinary (privat), URL eksternal/lokal, dan opsional keterkaitan ke `AssetFile`.
 
 | Field | Tipe | Atribut |
 | --- | --- | --- |
@@ -87,11 +96,12 @@ File PDF di dalam sebuah bundle. Mendukung Cloudinary (privat) maupun URL ekster
 | `bytes` | Int? | ukuran |
 | `checksum` | String? | sha256 |
 | `fileUrl` | String? | untuk EXTERNAL/LOCAL/legacy |
+| `assetFileId` | String? | FK → AssetFile (onDelete **SetNull**) |
 | `sortOrder` | Int | default `0` |
 | `createdAt` | DateTime | now |
 | `entitlements` / `downloadTokens` | relasi | |
 
-Constraint: `@@unique([productId, sortOrder])`, `@@index([productId])`.
+Constraint: `@@unique([productId, sortOrder])`, `@@index([productId])`, `@@index([assetFileId])`.
 
 ### 2.5 `OrderStatus` (enum)
 `PENDING` · `PAID` · `FAILED` · `CANCELED` · `PARTIALLY_REFUNDED` · `REFUNDED`
@@ -239,14 +249,30 @@ Key-value JSON untuk konfigurasi dinamis (belum dipakai di kode).
 | `value` | Json | |
 | `updatedAt` | DateTime | updatedAt |
 
+### 2.15 `AssetFile` → `asset_files`
+Aset penyimpanan yang dapat dipakai ulang lintas produk. Dibuat/di-upsert dari hasil upload (Cloudinary) dengan kunci `storageKey`.
+
+| Field | Tipe | Atribut |
+| --- | --- | --- |
+| `id` | String | PK, cuid |
+| `storageKey` | String | unique (public_id Cloudinary / path lokal) |
+| `provider` | StorageProvider | default `CLOUDINARY` |
+| `resourceType` | String? | mis. `image` |
+| `format` | String? | mis. `pdf` |
+| `mimeType` | String? | default `application/pdf` |
+| `bytes` | Int? | ukuran |
+| `checksum` | String? | sha256 |
+| `version` | Int | default `1` — dinaikkan saat upsert |
+| `createdAt` / `updatedAt` | DateTime | |
+| `productFiles` | ProductFile[] | relasi |
+
 ---
 
 ## 3. Relasi (ringkas)
 
 ```
-Niche 1───∞ Product 1───∞ ProductFile
-                │              │
-                │              │
+Niche 1───∞ Product 1───∞ ProductFile ──0..1 AssetFile
+
 Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
   │            │              │
   ├─∞ Payment  └──────────────┘
@@ -254,7 +280,7 @@ Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
 ```
 
 - Hapus Niche → Product (cascade) → ProductFile (cascade).
-- Hapus Product → OrderItem.productId & Entitlement.productId diset null (riwayat aman); ProductFile terhapus cascade dari Product.
+- Hapus Product → OrderItem.productId & Entitlement.productId diset null (riwayat aman); ProductFile terhapus cascade dari Product; `ProductFile.assetFileId` diset null bila AssetFile dihapus.
 - Hapus Order → OrderItem (cascade) → DownloadToken (cascade); **Payment/Entitlement memakai `Restrict`** agar histori transaksi tidak hilang.
 - `Entitlement` idempotent: unique `(orderItemId, fileId)`.
 - `DownloadToken` boleh dikaitkan ke `Entitlement` + `fileId` dengan FK (SetNull bila file hilang).
@@ -269,6 +295,9 @@ Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
 | `20261016103805_add_paddle_product_id` | `products.paddleProductId` + `paddleSyncedAt`. |
 | `20261016110500_product_files_bundle` | Tabel `product_files`; `download_tokens.fileId/label/fileUrl`; migrasi `products.fileUrl` → `product_files`. |
 | `20261017120000_hardening_entities` | Enum `StorageProvider`, `PaymentStatus`, `EntitlementStatus`, `WebhookStatus`; nilai `OrderStatus.PARTIALLY_REFUNDED`; `admin_users.tokenVersion`; kolom storage pada `product_files` (`fileUrl` jadi nullable, unique `(productId, sortOrder)`); `orders.amountRefunded/refundedAt`; `order_items.lineTotal/productTitle`; `download_tokens.entitlementId`; `webhook_events.status/attempts/error/receivedAt`; tabel `payments`, `entitlements`, `access_links`, `audit_logs`. |
+| `20261017130000_learning_platform_models` | Enum `LearningLevel`; `niches.audience/problems`; `products` (audience, notFor, outcome, learnings, limitations, license, sampleUrl, level); `product_files.assetFileId`; tabel `asset_files`. |
+
+> **Catatan:** pada environment dev, migrasi `20261017120000_hardening_entities` pernah gagal karena FK `download_tokens.fileId` yatim; DB dev di-reset (`prisma migrate reset --force`) sebelum migrasi learning platform diterapkan.
 
 ---
 
@@ -276,7 +305,7 @@ Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
 
 Dijalankan dengan `npm run db:seed`. Idempotent (`upsert`). Admin dari env `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` (default `admin@1section.com` / `ChangeMe123!` / `Administrator`; bcrypt cost 10).
 
-Niches: `finance` (#10B981), `business` (#6366F1), `marketing` (#F59E0B), `productivity` (#EC4899). Products: 1 per niche (`personal-finance-starter-bundle` 2900/5900, `business-launch-toolkit` 3900/7900, `content-marketing-system` 2400, `deep-work-planner` 1900). Seed belum membuat `ProductFile`, jadi produk contoh belum punya PDF.
+Niches (dengan `audience` + `problems`): `finance` (#10B981), `business` (#6366F1), `psychology` (#EC4899), `career` (#F59E0B). Products (≥2 per niche, masing-masing dengan field audience/notFor/outcome/learnings/limitations/license/level): `finance` → `budgeting-with-irregular-income` 2900/4900, `debt-or-savings-priorities` 2400; `business` → `customer-discovery-sprint` 3900/6900, `pricing-your-first-offer`; `psychology` → `habit-rebuild-kit` 1900, `focus-without-willpower`; `career` → `skill-plan-for-target-role` 2900/4900, `interview-evidence-stories`. Seed belum membuat `ProductFile`/`AssetFile`, jadi produk contoh belum punya file fisik.
 
 ---
 
@@ -286,6 +315,7 @@ Niches: `finance` (#10B981), `business` (#6366F1), `marketing` (#F59E0B), `produ
 - `WebhookEvent.eventId` unik → **lock idempotensi**: `create` gagal bila duplikat; sistem membedakan `PROCESSED` (skip) vs `FAILED` (retry).
 - Produk tanpa `paddlePriceId` **tidak bisa** checkout.
 - Uang disimpan `Int` cent; format di client (`formatCurrency` membagi 100). Tidak ada `Float`/`Decimal` untuk uang.
-- `features` wajib array string (≤30 item, ≤200 char/item via zod).
-- Data publik **tidak** mengekspos `paddleProductId`, `paddlePriceId`, `storageKey`, `fileUrl`; endpoint publik memakai `select` terbatas.
+- `features` dan `learnings` wajib array string (≤30 item, ≤200/300 char via zod).
+- Data publik **tidak** mengekspos `paddleProductId`, `paddlePriceId`, `storageKey`, `fileUrl`, `assetFileId`; endpoint publik memakai `select` terbatas.
+- `AssetFile.storageKey` unik → upload `upsert` memperbarui metadata & menaikkan `version`, bukan membuat baris ganda.
 - Fulfillment idempotent lewat `Entitlement` unik + `DownloadToken` per entitlement.

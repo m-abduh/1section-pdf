@@ -1,6 +1,8 @@
-# PRD — 1Section
+# PRD — 1section
 
 > **Product Requirements Document** ditulis ulang secara menyeluruh berdasarkan kondisi **aktual kode** di repository. Dokumen ini menjadi indeks utama; detail teknis dipisah ke `docs/`.
+>
+> **Reposisi (2026):** produk berevolusi dari sekadar "toko bundle PDF per-niche" menjadi **platform pembelajaran praktis** yang diorganisasi berdasarkan **masalah nyata** (`plan.md` → *One Section*). Nama tampilan brand: **`1section`** (huruf kecil). Alur inti pengguna: **Understand → Decide → Act**. Domain tetap `1section.com`.
 >
 > Konteks asli (dari catatan awal): landing page terintegrasi pembayaran **Paddle.com**, di bawahnya menjual **bundle PDF per niche**, dengan domain utama `1section.com` dan subdomain per niche (`finance.1section.com`, `business.1section.com`, dst.) serta admin di `admin.1section.com`. Stack yang diminta: Next.js + Tailwind + TypeScript + Axios + React Query + react-hook-form + Express + CORS, scalable, mudah dimaintain, clean-code.
 
@@ -15,7 +17,7 @@
 | [`docs/design-system.md`](docs/design-system.md) | Design token, tema, motion, inventaris komponen UI, layout |
 | [`docs/data-model.md`](docs/data-model.md) | Skema Prisma, relasi, index, migrasi, seed |
 | [`docs/api-spec.md`](docs/api-spec.md) | Referensi REST API lengkap (request/response/error) |
-| [`docs/client-app.md`](docs/client-app.md) | Detail aplikasi Next.js (routing, halaman, komponen, hooks, lib) |
+| [`docs/client-app.md`](docs/client-app.md) | Detail aplikasi Next.js (routing, halaman, komponen, hooks, lib) — termasuk halaman resource, about/FAQ/legal |
 | [`docs/server-app.md`](docs/server-app.md) | Detail API Express (modul, middleware, util, alur eksekusi) |
 | [`docs/paddle-integration.md`](docs/paddle-integration.md) | Integrasi Paddle (katalog, checkout, webhook, pengujian) |
 | [`docs/operations.md`](docs/operations.md) | Setup, env, skrip, DNS/subdomain, deployment, storage |
@@ -24,33 +26,46 @@
 
 ## 1. Ringkasan Produk
 
-**1Section** adalah platform penjualan **bundle PDF per-niche** dengan model **sekali beli (one-time purchase)**. Setiap niche memiliki landing page sendiri (via subdomain), dan setiap produk adalah kumpulan file PDF yang otomatis dapat diunduh pembeli setelah pembayaran terkonfirmasi melalui **Paddle** (merchant of record).
+**1section** adalah **platform pembelajaran praktis** dengan model **sekali beli (one-time purchase)**. Konten diorganisasi berdasarkan **masalah nyata** (mis. "punya utang dan tabungan sekaligus", "ide usaha belum terbukti") alih-alih sekadar daftar topik. Setiap area masalah memiliki halaman sendiri (via subdomain), dan setiap produk adalah kumpulan file yang otomatis dapat diakses pembeli setelah pembayaran terkonfirmasi melalui **Paddle** (merchant of record).
+
+Kerangka pengalaman tiap materi: **Understand → Decide → Act**.
 
 - Domain utama: **`1section.com`**
-- Subdomain niche: **`<slug>.1section.com`**
+- Subdomain area masalah (niche): **`<slug>.1section.com`**
 - Admin: **`admin.1section.com`**
 
-**Value proposition:** pilih niche → bayar sekali dengan Paddle → unduh PDF langsung. Tanpa langganan, tanpa akun pembeli yang rumit.
+**Information architecture baru**
+- **Landing root** (`1section.com`): menjelaskan apa itu 1section + daftar niche (section per-niche: penjelasan area, audience, masalah) dengan CTA ke subdomain niche. Root **hanya** untuk landing page (plus checkout/admin).
+- **Landing subdomain niche** (`<slug>.1section.com`): hero area + daftar bundle yang dijelaskan (kartu bundle: level, outcome, cuplikan learnings, harga) + daftar masalah.
+- **Halaman resource** (`<slug>.1section.com/resources/<product>`): detail produk (audience/not-for/outcome/learnings/limitations/license/sample), harga, pembelian.
+- **Halaman editorial**: `/about`, `/faq`.
+- **Halaman legal**: `/privacy`, `/terms`, `/refund`, `/support`.
+
+**Value proposition:** temukan masalahmu → dapatkan urutan belajar yang jelas → bayar sekali dengan Paddle → akses langsung. Tanpa langganan, tanpa akun pembeli yang rumit.
+
+**Bahasa:** seluruh UI/storefront dalam **English native** (target pasar luar negeri). Dokumentasi internal tetap Indonesia.
 
 ---
 
 ## 2. Latar Belakang & Masalah
 
+- Orang tidak kekurangan informasi; mereka kekurangan **langkah berikutnya yang jelas**.
 - Penjual produk digital sering perlu banyak *landing page* per topik, tetapi membangun & memelihara satu per satu mahal.
 - Pembayaran digital lintas negara rumit dari sisi **pajak (VAT/sales tax)** dan kepatuhan.
 - Pengiriman produk digital harus **instan, aman, dan terlacak** (mencegah link tersebar).
 
-**Solusi 1Section:**
-- Satu codebase multi-niche dengan subdomain dinamis.
+**Solusi 1section:**
+- Satu codebase multi-masalah dengan subdomain dinamis; IA fokus masalah, bukan topik.
+- Bundle praktis yang menyusun penjelasan, keputusan, dan langkah aksi menuju outcome.
 - Paddle menangani pembayaran + pajak (merchant of record).
-- Sistem **download token** berbatas waktu & kuota untuk distribusi file yang terkendali.
+- Sistem **download token** berbatas waktu & kuota, dengan file disimpan di storage privat (Cloudinary) dan disajikan lewat signed URL.
 
 ---
 
 ## 3. Tujuan & Metrik Keberhasilan
 
 **Tujuan produk**
-- Menjual bundle PDF multi-niche dari satu platform.
+- Menjual bundle pembelajaran praktis dari satu platform, diorganisasi per masalah nyata.
 - Menambah niche/produk baru tanpa perubahan kode.
 - Pembayaran patuh pajak via Paddle.
 - Pengiriman file instan & aman.
@@ -139,7 +154,7 @@ Dashboard (revenue, order) → Orders (filter status, cari, paginate) → detail
 ## 7. Kebutuhan Fungsional (FR)
 
 ### 7.1 Katalog & Landing Page
-- **FR-1** Menampilkan daftar niche aktif di landing utama (prioritas `featured`).
+- **FR-1** Menampilkan daftar niche aktif di landing utama (urut `sortOrder`).
 - **FR-2** Setiap niche aktif dapat diakses lewat subdomain `<slug>` (`finance.1section.com`; dev `finance.localhost:3000`); fallback path `/niche/<slug>` hanya bila `NEXT_PUBLIC_USE_SUBDOMAINS=false`.
 - **FR-3** Landing niche menampilkan nama, tagline, deskripsi, dan produk aktif.
 - **FR-4** Setiap produk menampilkan harga (format mata uang), harga pembanding (opsional, dicoret), daftar fitur, jumlah PDF, dan tombol beli.
@@ -163,7 +178,7 @@ Dashboard (revenue, order) → Orders (filter status, cari, paginate) → detail
 ### 7.4 Admin
 - **FR-16** Login admin (email/password, bcrypt) → JWT + `tokenVersion`; logout mencabut sesi; rate limit login.
 - **FR-17** Guard route admin (redirect ke login bila belum auth) + `requireRole`.
-- **FR-18** CRUD niche (aktif/featured/sortOrder, warna aksen, slug otomatis).
+- **FR-18** CRUD niche (aktif/sortOrder, warna aksen, slug otomatis).
 - **FR-19** CRUD produk + upload banyak PDF (maks 50 file, 50 MB/file, hanya PDF + magic bytes) ke Cloudinary privat.
 - **FR-20** Auto-sync produk & harga ke Paddle saat create/update.
 - **FR-21** Aksi manual: Sync to Paddle, cek state Paddle, Archive (nonaktifkan).
@@ -240,11 +255,12 @@ Tema monokrom "cinematic" (grid, spotlight, noise, teks gradien), token warna CS
 
 | # | Sebagai | Saya ingin | Supaya | Kriteria terima |
 | --- | --- | --- | --- | --- |
-| US-1 | Pembeli | menjelajah niche | menemukan bundle | Landing menampilkan kartu niche; klik membuka subdomain niche |
-| US-2 | Pembeli | membeli sekali | mendapat PDF | Klik beli → Paddle overlay → setelah bayar order `PAID` & link muncul |
+| US-1 | Pembeli | menjelajah berdasarkan masalah | menemukan resource yang relevan | Homepage menampilkan area masalah; klik membuka halaman masalah (subdomain) |
+| US-1b | Pembeli | memahami tiap area | memilih niche yang relevan | Homepage menjelaskan tiap niche (audience, masalah, bundle) dalam section tersendiri |
+| US-2 | Pembeli | membeli sekali | mendapat resource | Klik beli → Paddle overlay → setelah bayar order `PAID` & link muncul |
 | US-3 | Pembeli | mengunduh ulang | akses di lain waktu | `/checkout/success` + nomor order → minta magic-link email → buka tautan akses menampilkan link unduh |
-| US-4 | Admin | menambah niche | landing baru | Create niche → `<slug>.1section.com` melayani landing |
-| US-5 | Admin | menjual produk | dapat dibeli | Create produk + upload PDF → sinkron Paddle → tampil di landing |
+| US-4 | Admin | menambah area masalah | halaman baru | Create niche (audience+problems) → `<slug>.1section.com` melayani halaman masalah |
+| US-5 | Admin | menjual produk | dapat dibeli | Create produk + upload file → sinkron Paddle → tampil di halaman masalah |
 | US-6 | Admin | memantau order | mengelola penjualan | Daftar order dengan filter/pencarian/pagination + detail |
 | US-7 | Admin | melihat performa | mengambil keputusan | Dashboard menampilkan revenue & statistik |
 
@@ -262,8 +278,11 @@ Tema monokrom "cinematic" (grid, spotlight, noise, teks gradien), token warna CS
 | Magic-link akses + email | ✅ Selesai |
 | Refund (penuh/sebagian) + pencabutan entitlement | ✅ Selesai |
 | Admin auth + dashboard | ✅ Selesai |
-| Admin CRUD niche | ✅ Selesai (accentColor diperbaiki) |
-| Admin CRUD produk + upload PDF + sync Paddle | ✅ Selesai |
+| Admin CRUD niche | ✅ Selesai (audience + problems) |
+| Admin CRUD produk + upload PDF + sync Paddle | ✅ Selesai (+ field naratif: audience/notFor/outcome/learnings/limitations/license/sampleUrl/level) |
+| Reposisi IA "practical learning" (homepage penjelasan + section per-niche, halaman resource, about/FAQ/legal) | ✅ Selesai |
+| Model `AssetFile` + field naratif produk + nav bertingkat di landing page | ✅ Selesai |
+| Brand `1section` + copy English native | ✅ Selesai |
 | Admin order (list/filter/detail/reconcile) | ✅ Selesai |
 | Test otomatis + CI | ✅ Selesai |
 | Migrasi data lama (verifikasi runtime dengan kredensial nyata) | ⏳ Perlu verifikasi manual |
@@ -276,8 +295,9 @@ Tema monokrom "cinematic" (grid, spotlight, noise, teks gradien), token warna CS
 - **`NicheForm` tidak mengirim `accentColor`** → ✅ diperbaiki.
 - **`heroImage` niche** tidak dirender → ⏳ masih terbuka (rendering opsional).
 - **Seed tidak membuat `ProductFile`** → ⏳ masih terbuka (produk contoh tanpa unduhan sampai PDF diunggah).
-- **Konten UI campur bahasa** → ⏳ sebagian masih terbuka.
+- **Konten UI campur bahasa** → ✅ storefront & admin kini English.
 - **Webhook lambat/gagal** membuat order tertahan `PENDING` → ✅ ada `reconcilePaidOrders` + `POST /admin/orders/reconcile` + script `reconcile`.
+- **`AssetFile` belum dipakai** → ✅ sekarang di-upsert saat upload dan `assetFileId` dikaitkan ke `ProductFile`.
 
 ### 16.2 Roadmap
 1. **Email transaksional** ✅ magic-link akses (Resend); email konfirmasi pembelian opsional.

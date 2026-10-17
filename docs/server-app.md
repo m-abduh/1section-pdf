@@ -1,4 +1,4 @@
-# Server Application — 1Section
+# Server Application — 1section
 
 > Dokumentasi detail `server/`: bootstrap, middleware, modul, lapisan kode, util, konfigurasi env, dan alur eksekusi internal. Stack: Express 5 + TypeScript + Prisma + Paddle SDK.
 
@@ -118,6 +118,7 @@ GET  /api/health
      /api/admin/products  → adminProductRouter 🔒
      /api/admin/orders    → adminOrderRouter 🔒
      /api/admin/uploads   → adminUploadRouter 🔒
+     /api/admin/assets    → adminAssetRouter 🔒
      /api/admin/stats     → adminStatsRouter 🔒
 webhook terpisah: /api/webhooks/paddle
 ```
@@ -136,12 +137,12 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 
 ### 7.2 `niches`
 - **routes public:** `GET /`, `GET /:slug`. **admin:** list/create/patch/delete (semua `requireAuth`).
-- **service:** `listPublicNiches` (active, hitung produk aktif), `listAdminNiches`, `getNicheBySlug(slug, onlyActive=true)` + produk+files, `createNiche` (slug auto via `slugify`, cek unik), `updateNiche` (partial), `deleteNiche`.
+- **service:** `listPublicNiches` (active, hitung produk aktif), `listAdminNiches`, `getNicheBySlug(slug, onlyActive=true)` + produk+files, `createNiche` (slug auto via `slugify`, cek unik), `updateNiche` (partial, termasuk `audience`/`problems`), `deleteNiche`.
 - **schema:** create/update (regex slug, hex accent, dsb.), param slug/id.
 
 ### 7.3 `products`
 - **routes public:** `GET /?niche=`, `GET /:slug`. **admin:** list/create/patch/delete + `paddle-sync`, `paddle` (get), `paddle-archive`.
-- **service:** `listPublicProducts(nicheSlug?)`, `listAdminProducts` (+`_count.orderItems`), `getPublicProductBySlug`, CRUD. `createProduct`/`updateProduct` menyusun `features` & `files`; update `files` = replace-all.
+- **service:** `listPublicProducts(nicheSlug?)`, `listAdminProducts` (+`_count.orderItems`), `getPublicProductBySlug`, CRUD. `createProduct`/`updateProduct` menyusun `features`, `learnings`, & `files`; update `files` = replace-all. Field naratif baru (`audience`, `notFor`, `outcome`, `limitations`, `license`, `sampleUrl`, `level`) ikut divalidasi zod.
 - **response publik** memakai `publicProductSelect` → **tidak** mengekspos `paddleProductId`/`paddlePriceId`/`storageKey`/`fileUrl` (file hanya `{ id, name, sortOrder, format }`).
 - **controller:** setelah create/update → `syncProductToPaddle` (best-effort, warning bila gagal), refresh & kirim produk; aksi tulis mencatat `AuditLog`.
 - **schema:** validasi lengkap (lihat `api-spec.md` §5).
@@ -175,7 +176,11 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 
 ### 7.9 `uploads`
 - **routes:** `POST /` (requireAuth) → multer `memoryStorage`, batas 50 MB, filter MIME PDF + **validasi magic bytes `%PDF-`**.
-- **service:** `uploadPrivatePdf` ke Cloudinary (`type=authenticated`) → metadata `{ provider, storageKey, resourceType, format, bytes, checksum }`; `503 STORAGE_NOT_CONFIGURED` bila Cloudinary belum diatur; aksi dicatat di `AuditLog`.
+- **service:** `uploadPrivatePdf` ke Cloudinary (`type=authenticated`) → metadata `{ provider, storageKey, resourceType, format, bytes, checksum }`; **upsert `AssetFile`** (by `storageKey`) dan respons menyertakan `assetFileId`; `503 STORAGE_NOT_CONFIGURED` bila Cloudinary belum diatur; aksi dicatat di `AuditLog`.
+
+### 7.9a `assets`
+- **routes:** `GET /` (list + `_count.productFiles`), `POST /` (upsert manual by `storageKey`).
+- **service:** `listAssetFiles`, `upsertAssetFile` (update metadata + naikkan `version`).
 
 ### 7.10 `stats`
 - **routes:** `GET /` (requireAuth) → `getDashboardStats` (counts + SUM revenue + 5 order terbaru).

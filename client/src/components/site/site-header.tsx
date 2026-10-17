@@ -3,39 +3,132 @@ import type { Niche } from "@/lib/types";
 import { SITE_NAME, nicheUrl } from "@/lib/site";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export function SiteHeader({ niches = [] }: { niches?: Niche[] }) {
+const globalLinks = [
+  { href: "/about", label: "About" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/support", label: "Support" },
+];
+
+export function SiteHeader({
+  niches = [],
+  variant = "default",
+  currentNicheName,
+}: {
+  niches?: Niche[];
+  variant?: "default" | "home";
+  currentNicheName?: string;
+}) {
+  if (variant === "home") {
+    return (
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/70 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
+              1s
+            </span>
+            <span className="text-lg font-semibold tracking-tight text-fg">
+              {SITE_NAME}
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <nav className="mr-2 hidden items-center gap-6 md:flex">
+              {globalLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm font-medium text-fg-muted transition hover:text-fg"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Link
+                href="/checkout/success"
+                className="text-sm font-medium text-fg-muted transition hover:text-fg"
+              >
+                Retrieve purchase
+              </Link>
+            </nav>
+            <ThemeToggle />
+            <Link
+              href="/#niches"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
+            >
+              Explore
+            </Link>
+          </div>
+        </div>
+
+        <div className="border-t border-border bg-surface-muted/60">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 sm:px-6">
+            <span className="hidden shrink-0 py-3 text-xs font-semibold uppercase tracking-wide text-fg-muted sm:block">
+              Areas
+            </span>
+            <nav className="flex flex-1 items-center gap-1 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {niches.length === 0 ? (
+                <span className="px-2 py-1 text-sm text-fg-muted">
+                  No areas yet
+                </span>
+              ) : (
+                niches.map((niche) => (
+                  <a
+                    key={niche.id}
+                    href={nicheUrl(niche.slug)}
+                    className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-fg-muted transition hover:bg-card hover:text-fg"
+                  >
+                    {niche.name}
+                  </a>
+                ))
+              )}
+            </nav>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
-            1S
-          </span>
-          <span className="text-lg font-semibold tracking-tight text-fg">
-            {SITE_NAME}
-          </span>
-        </Link>
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
+              1s
+            </span>
+            <span className="text-lg font-semibold tracking-tight text-fg">
+              {SITE_NAME}
+            </span>
+          </Link>
+          {currentNicheName ? (
+            <>
+              <span className="text-fg-muted">/</span>
+              <span className="text-sm font-medium text-fg">
+                {currentNicheName}
+              </span>
+            </>
+          ) : null}
+        </div>
 
         <nav className="hidden items-center gap-6 md:flex">
-          {niches.slice(0, 5).map((niche) => (
-            <a
-              key={niche.id}
-              href={nicheUrl(niche.slug)}
+          {globalLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
               className="text-sm font-medium text-fg-muted transition hover:text-fg"
             >
-              {niche.name}
-            </a>
+              {link.label}
+            </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <a
-            href="#bundles"
+          <Link
+            href="/#niches"
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
           >
-            Browse bundles
-          </a>
+            Explore
+          </Link>
         </div>
       </div>
     </header>

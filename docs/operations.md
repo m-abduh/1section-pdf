@@ -1,6 +1,6 @@
-# Operations & Deployment — 1Section
+# Operations & Deployment — 1section
 
-> Panduan menjalankan, mengonfigurasi, dan men-deploy 1Section: prasyarat, env, skrip, setup database, subdomain/DNS, storage upload, dan catatan produksi.
+> Panduan menjalankan, mengonfigurasi, dan men-deploy 1section: prasyarat, env, skrip, setup database, subdomain/DNS, storage upload, dan catatan produksi.
 
 ---
 

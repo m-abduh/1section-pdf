@@ -41,6 +41,12 @@ enum WebhookStatus {
   FAILED
 }
 
+enum LearningLevel {
+  FOUNDATIONS
+  PRACTICAL
+  ADVANCED
+}
+
 model AdminUser {
   id           String     @id @default(cuid())
   email        String     @unique
@@ -78,9 +84,10 @@ model Niche {
   name        String
   tagline     String?
   description String?
+  audience    String?
+  problems    Json      @default("[]")
   heroImage   String?
   accentColor String    @default("#6366F1")
-  featured    Boolean   @default(false)
   active      Boolean   @default(true)
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
@@ -99,6 +106,14 @@ model Product {
   name            String
   summary         String?
   description     String?
+  audience        String?
+  notFor          String?
+  outcome         String?
+  learnings       Json          @default("[]")
+  limitations     String?
+  license         String?
+  sampleUrl       String?
+  level           LearningLevel @default(FOUNDATIONS)
   coverImage      String?
   priceAmount     Int
   compareAtAmount Int?
@@ -131,6 +146,8 @@ model ProductFile {
   bytes          Int?
   checksum       String?
   fileUrl        String?
+  assetFileId    String?
+  assetFile      AssetFile?      @relation(fields: [assetFileId], references: [id], onDelete: SetNull)
   sortOrder      Int             @default(0)
   createdAt      DateTime        @default(now())
   entitlements   Entitlement[]
@@ -138,8 +155,27 @@ model ProductFile {
 
   @@unique([productId, sortOrder])
   @@index([productId])
+  @@index([assetFileId])
   @@map("product_files")
 }
+
+model AssetFile {
+  id           String          @id @default(cuid())
+  storageKey   String          @unique
+  provider     StorageProvider @default(CLOUDINARY)
+  resourceType String?
+  format       String?
+  mimeType     String?
+  bytes        Int?
+  checksum     String?
+  version      Int             @default(1)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  productFiles ProductFile[]
+
+  @@map("asset_files")
+}
+
 
 model Order {
   id                  String       @id @default(cuid())

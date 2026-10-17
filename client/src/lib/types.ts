@@ -4,15 +4,30 @@ export interface Niche {
   name: string;
   tagline: string | null;
   description: string | null;
+  audience: string | null;
+  problems: string[];
   heroImage: string | null;
   accentColor: string;
-  featured: boolean;
   active: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
   _count?: { products: number };
 }
+
+export type LearningLevel = "FOUNDATIONS" | "PRACTICAL" | "ADVANCED";
+
+export const LEARNING_LEVELS: LearningLevel[] = [
+  "FOUNDATIONS",
+  "PRACTICAL",
+  "ADVANCED",
+];
+
+export const LEARNING_LEVEL_LABEL: Record<LearningLevel, string> = {
+  FOUNDATIONS: "Foundations",
+  PRACTICAL: "Practical",
+  ADVANCED: "Advanced",
+};
 
 export interface ProductFile {
   id: string;
@@ -25,6 +40,7 @@ export interface ProductFile {
   bytes?: number | null;
   checksum?: string | null;
   fileUrl?: string | null;
+  assetFileId?: string | null;
 }
 
 export interface Product {
@@ -34,6 +50,14 @@ export interface Product {
   name: string;
   summary: string | null;
   description: string | null;
+  audience: string | null;
+  notFor: string | null;
+  outcome: string | null;
+  learnings: string[];
+  limitations: string | null;
+  license: string | null;
+  sampleUrl: string | null;
+  level: LearningLevel;
   coverImage: string | null;
   priceAmount: number;
   compareAtAmount: number | null;
@@ -45,13 +69,14 @@ export interface Product {
   files: ProductFile[];
   active: boolean;
   sortOrder: number;
-  niche?: { id: string; slug: string; name: string };
+  niche?: { id: string; slug: string; name: string; accentColor?: string };
   _count?: { orderItems: number };
 }
 
 export interface NicheWithProducts extends Niche {
   products: Product[];
 }
+
 
 export type OrderStatus =
   | "PENDING"

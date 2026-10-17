@@ -1,4 +1,4 @@
-# API Specification — 1Section
+# API Specification — 1section
 
 > Referensi REST API `server/` (Express 5). Base URL default: `http://localhost:4000`. Semua endpoint API berada di prefix **`/api`**. Response selalu JSON dengan envelope konsisten.
 
@@ -91,16 +91,18 @@ Daftar niche **aktif**, urut `sortOrder ASC, name ASC`, termasuk jumlah produk a
     {
       "id": "clx...", "slug": "finance", "name": "Finance",
       "tagline": "...", "description": "...", "heroImage": null,
-      "accentColor": "#10B981", "featured": true, "active": true,
+      "audience": "Adults with irregular income",
+      "problems": ["I cannot reconcile irregular income...", "..."],
+      "accentColor": "#10B981", "active": true,
       "sortOrder": 1, "createdAt": "...", "updatedAt": "...",
-      "_count": { "products": 1 }
+      "_count": { "products": 2 }
     }
   ]
 }
 ```
 
 ### `GET /api/niches/:slug`
-Detail niche + produk aktif. File yang disertakan hanya `{ id, name, sortOrder, format }` (tanpa `storageKey`/`fileUrl`). **Tanpa** ID Paddle.
+Detail niche + produk aktif. Produk menyertakan field baru (`outcome`, `level`, dst). File hanya `{ id, name, sortOrder, format }` (tanpa `storageKey`/`fileUrl`). **Tanpa** ID Paddle.
 **Params:** `slug` (string).
 **200:** `data` = niche + `products: Product[]`.
 **Errors:** `404 NOT_FOUND` bila tidak ada / non-aktif.
@@ -116,9 +118,10 @@ Semua niche (termasuk non-aktif), urut `sortOrder, name`, dengan `_count.product
   "slug": "finance",            // opsional, regex ^[a-z0-9-]+$ (auto dari name bila kosong)
   "tagline": "...",             // opsional, <=240
   "description": "...",         // opsional, <=5000
+  "audience": "...",            // opsional, <=1000
+  "problems": ["...", "..."],   // opsional, maks 30, tiap item <=300
   "heroImage": "https://...",   // opsional, <=500
   "accentColor": "#10B981",     // opsional, hex 6 digit
-  "featured": true,             // opsional
   "active": true,               // opsional
   "sortOrder": 1                // opsional
 }
@@ -156,6 +159,14 @@ Semua produk (termasuk non-aktif), urut `sortOrder ASC, createdAt DESC`, include
   "slug": "personal-finance-bundle",// opsional regex
   "summary": "...",                 // opsional <=300
   "description": "...",             // opsional <=20000
+  "audience": "...",                // opsional <=1000
+  "notFor": "...",                  // opsional <=1000
+  "outcome": "...",                 // opsional <=1000
+  "learnings": ["...", "..."],      // opsional, maks 50, tiap item <=300
+  "limitations": "...",             // opsional <=2000
+  "license": "...",                 // opsional <=2000
+  "sampleUrl": "https://...",       // opsional <=500
+  "level": "PRACTICAL",             // opsional: FOUNDATIONS | PRACTICAL | ADVANCED
   "coverImage": "https://...",      // opsional <=500
   "priceAmount": 2900,              // wajib, int >=0 (cent)
   "compareAtAmount": 5900,          // opsional int >=0
@@ -168,7 +179,8 @@ Semua produk (termasuk non-aktif), urut `sortOrder ASC, createdAt DESC`, include
       "provider": "CLOUDINARY",     // CLOUDINARY | LOCAL | EXTERNAL (opsional, default EXTERNAL)
       "storageKey": "1section/bundles/budget-123", // public_id Cloudinary
       "resourceType": "image", "format": "pdf", "bytes": 123456, "checksum": "sha256...",
-      "fileUrl": null               // untuk EXTERNAL/LOCAL
+      "fileUrl": null,              // untuk EXTERNAL/LOCAL
+      "assetFileId": "clx..."       // opsional, dari hasil upload
     }
   ],
   "active": true,                   // opsional
@@ -312,11 +324,19 @@ Nama file: label + ekstensi `.pdf` bila belum ada, disanitasi (`[^a-zA-Z0-9._-]`
     "name": "guide",
     "provider": "CLOUDINARY",
     "storageKey": "1section/bundles/guide-1700000000000",
-    "resourceType": "image", "format": "pdf", "bytes": 123456, "checksum": "sha256..."
+    "resourceType": "image", "format": "pdf", "bytes": 123456, "checksum": "sha256...",
+    "assetFileId": "clx..."
   }
 }
 ```
+Upload juga melakukan **upsert `AssetFile`** (by `storageKey`) dan mengembalikan `assetFileId` untuk dikaitkan ke `ProductFile`.
 **Errors:** `400 BAD_FILE` (bukan PDF), `400 INVALID_PDF` (magic bytes tidak cocok), `400` (tidak ada file), `503 STORAGE_NOT_CONFIGURED` (Cloudinary belum dikonfigurasi).
+
+### `GET /api/admin/assets` 🔒
+Daftar `AssetFile` (terbaru dulu) dengan `_count.productFiles`.
+
+### `POST /api/admin/assets` 🔒
+Upsert `AssetFile` manual (by `storageKey`). **Body:** `storageKey` (wajib), `provider`, `resourceType`, `format`, `mimeType`, `bytes`, `checksum`. **201:** `data` = assetFile.
 
 ---
 
@@ -396,5 +416,7 @@ Bukan endpoint publik biasa — dipanggil Paddle.
 | POST | `/api/admin/products/:id/paddle-archive` | 🔒 | Archive di Paddle |
 | GET | `/api/admin/orders` | 🔒 | List order (paginate/filter) |
 | GET | `/api/admin/orders/:id` | 🔒 | Detail order |
-| POST | `/api/admin/uploads` | 🔒 | Upload PDF |
+| POST | `/api/admin/uploads` | 🔒 | Upload PDF (+ upsert AssetFile) |
+| GET | `/api/admin/assets` | 🔒 | List asset files |
+| POST | `/api/admin/assets` | 🔒 | Upsert asset file |
 | GET | `/api/admin/stats` | 🔒 | Statistik dashboard |

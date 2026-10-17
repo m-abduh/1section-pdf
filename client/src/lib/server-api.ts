@@ -29,3 +29,8 @@ export function getNiche(slug: string): Promise<NicheWithProducts | null> {
 export function getProduct(slug: string): Promise<Product | null> {
   return apiGet<Product>(`/products/${slug}`, 30);
 }
+
+export function getProducts(nicheSlug?: string): Promise<Product[] | null> {
+  const query = nicheSlug ? `?niche=${encodeURIComponent(nicheSlug)}` : "";
+  return apiGet<Product[]>(`/products${query}`, 30);
+}

@@ -22,7 +22,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface p-4 md:flex">
         <Link href="/admin" className="flex items-center gap-2 px-2 py-3">
           <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
-            1S
+            1s
           </span>
           <span className="text-sm font-semibold text-fg">Admin</span>
         </Link>
@@ -66,7 +66,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
           <div className="flex items-center gap-3 md:hidden">
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
-              1S
+              1s
             </span>
             <span className="text-sm font-semibold text-fg">Admin</span>
           </div>

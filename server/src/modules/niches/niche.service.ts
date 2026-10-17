@@ -35,6 +35,14 @@ export async function getNicheBySlug(slug: string, onlyActive = true) {
           name: true,
           summary: true,
           description: true,
+          audience: true,
+          notFor: true,
+          outcome: true,
+          learnings: true,
+          limitations: true,
+          license: true,
+          sampleUrl: true,
+          level: true,
           coverImage: true,
           priceAmount: true,
           compareAtAmount: true,
@@ -87,9 +95,10 @@ export async function createNiche(input: CreateNicheInput) {
     name: input.name,
     tagline: input.tagline ?? null,
     description: input.description ?? null,
+    audience: input.audience ?? null,
+    problems: input.problems ?? [],
     heroImage: input.heroImage ?? null,
     accentColor: input.accentColor ?? "#6366F1",
-    featured: input.featured ?? false,
     active: input.active ?? true,
     sortOrder: input.sortOrder ?? 0,
   };
@@ -109,9 +118,10 @@ export async function updateNiche(id: string, input: UpdateNicheInput) {
   if (input.name !== undefined) data.name = input.name;
   if (input.tagline !== undefined) data.tagline = input.tagline;
   if (input.description !== undefined) data.description = input.description;
+  if (input.audience !== undefined) data.audience = input.audience;
+  if (input.problems !== undefined) data.problems = input.problems;
   if (input.heroImage !== undefined) data.heroImage = input.heroImage;
   if (input.accentColor !== undefined) data.accentColor = input.accentColor;
-  if (input.featured !== undefined) data.featured = input.featured;
   if (input.active !== undefined) data.active = input.active;
   if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
 

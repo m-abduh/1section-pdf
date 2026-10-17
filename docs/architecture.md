@@ -1,4 +1,4 @@
-# Architecture — 1Section
+# Architecture — 1section
 
 > Gambaran teknis menyeluruh: struktur repo, tanggung jawab tiap lapisan, alur request, routing multi-subdomain, keamanan, dan model deployment.
 
@@ -82,7 +82,7 @@ Monorepo **npm workspaces** (`client`, `server`) dijoinkan lewat `concurrently`.
         ├── app.ts          # express app (middleware global)
         ├── config/env.ts   # validasi env (zod)
         ├── routes/index.ts # mount semua router
-        ├── modules/        # per-domain (auth, niches, products, checkout, orders, downloads, webhooks, uploads, stats, paddle)
+        ├── modules/        # per-domain (auth, niches, products, checkout, orders, downloads, webhooks, uploads, assets, stats, paddle)
         ├── middlewares/    # auth, rate-limit, validate, error
         ├── lib/            # prisma, jwt, paddle, cloudinary, email, audit
         ├── scripts/        # reconcile (rekonsiliasi entitlement)
@@ -177,15 +177,19 @@ Matcher mengecualikan `api`, `_next/static`, `_next/image`, `favicon.ico`, dan s
 Logika:
 1. Ekstrak subdomain dari `Host` terhadap suffix `ROOT_DOMAIN`, `localhost`, `lvh.me` (hanya satu level subdomain; host dengan `www` diabaikan).
 2. `admin` → rewrite ke `/admin/*`.
-3. Subdomain lain → rewrite ke `/niche/<subdomain>/*` (kecuali path reserved: `/checkout`, `/admin`, `/api`, `/_next`).
-4. Selain itu → `NextResponse.next()`.
+3. Subdomain niche (selain `admin`/`www`): path `/` → rewrite ke `/niche/<subdomain>` (landing page niche/subdomain); path lain (`/resources/*`, editorial, legal) disajikan apa adanya.
+4. Root domain hanya untuk landing page: `/niche/<slug>` → redirect 308 ke `<slug>.<root>`; `/resources/<slug>` → lookup slug niche via API lalu redirect 308 ke `<slug>.<root>/resources/<slug>`.
+5. Selain itu → `NextResponse.next()`.
 
 Konstanta terkait:
 - `ROOT_DOMAIN` = `NEXT_PUBLIC_ROOT_DOMAIN` (default `1section.com`).
 - `DEV_SUFFIXES` = `["localhost", "lvh.me"]`.
-- `RESERVED_PREFIXES` = `["/checkout", "/admin", "/api", "/_next"]`.
 
-`lib/site.ts` menyediakan `nicheUrl(slug)` yang menghasilkan URL subdomain (`finance.1section.com` di produksi, `finance.localhost:3000` di dev; protokol otomatis `http` untuk localhost/lvh.me). Dikontrol `NEXT_PUBLIC_USE_SUBDOMAINS` + `NEXT_PUBLIC_ROOT_DOMAIN`.
+`lib/site.ts` menyediakan helper URL subdomain (protokol otomatis `http` untuk localhost/lvh.me), dikontrol `NEXT_PUBLIC_USE_SUBDOMAINS` + `NEXT_PUBLIC_ROOT_DOMAIN`:
+- `nicheUrl(slug)` → `finance.1section.com` (dev `finance.localhost:3000`).
+- `resourceUrl(nicheSlug, productSlug)` → `<niche>.1section.com/resources/<product>`.
+- `rootUrl()` → root domain (`1section.com`), dipakai untuk logo/breadcrumb "Home" agar selalu kembali ke landing page utama.
+- `socialLinks(slug)` → tautan YouTube/Instagram/TikTok dengan handle seragam `@1section.<slug>` (prefix dari `NEXT_PUBLIC_SOCIAL_HANDLE_PREFIX`), mis. `youtube.com/@1section.business`.
 
 Di dev, Next mengizinkan host dev via `allowedDevOrigins` (`*.localhost`, `lvh.me`, `*.lvh.me`, `1section.com`, `*.1section.com`).
 

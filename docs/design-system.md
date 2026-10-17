@@ -1,4 +1,4 @@
-# Design System — 1Section
+# Design System — 1section
 
 > Sistem desain aktual yang dipakai di `client/`. Semua nilai diambil langsung dari `client/src/app/globals.css`, komponen `client/src/components/ui/*`, dan pola yang dipakai di halaman. Tema: **monokrom editorial** (hitam/putih/abu) dengan aksen kontras, gaya "cinematic" (grid, spotlight, noise, teks gradien).
 
@@ -118,11 +118,13 @@ Aksesibilitas gerak: `@media (prefers-reduced-motion: reduce)` mematikan ketiga 
 
 | Komponen | Fungsi & catatan visual |
 | --- | --- |
-| `SiteHeader` | Header sticky `backdrop-blur-xl`, logo kotak "1S" (bg-accent), nav niche (maks 5, sembunyikan < md), ThemeToggle, tombol "Browse bundles". |
-| `SiteFooter` | 3 kolom: brand + deskripsi, daftar niche, "Company" (Payments secured by Paddle, Instant delivery, Retrieve a purchase). |
-| `NicheCard` | Kartu link ke `nicheUrl(slug)`. Ikon huruf dari inisial nama, judul, tagline, jumlah bundle (`_count.products`), CTA "View bundles →". Hover: `-translate-y-1` + shadow. |
-| `ProductCard` | Layout 2 kolom (md+): kiri = Badge jumlah PDF, judul, summary, daftar fitur (cek lingkaran accent), harga (+ compare-at dicoret + label "one-time"), `BuyButton`, trust text. Kanan = cover image grayscale atau panel placeholder cinema-grid. |
+| `SiteHeader` | Header sticky `backdrop-blur-xl`, logo kotak "1s" (bg-accent). Dua varian: **`variant="home"`** (landing root) = 2 baris — **nav1** logo + nav global (About/FAQ/Support/Retrieve) + ThemeToggle + "Explore", **nav2** daftar horizontal niche (scrollable, diakhiri baris). **default** (halaman lain) = 1 baris dengan logo (+ nama niche opsional sebagai konteks) dan nav global. |
+| `SiteFooter` | 4 kolom: brand + tagline, daftar masalah (niche), "Learn" (about/faq), "Legal & support" (privacy/terms/refund/support). |
+| `NicheSection` | Blok full-width per niche di landing page root (bergantian kiri/kanan). Kiri: "Area 0N" + titik warna `accentColor`, nama, tagline, deskripsi, "Who this is for" (audience), lalu sebaris CTA "Explore N bundles" + chip sosial (ikon YouTube/Instagram/TikTok + `@1section.<slug>`, handle seragam via `socialLinks(slug)`). Kanan: panel "Problems covered here" (daftar `problems`). |
+| `BundleCard` | Kartu bundle di landing subdomain niche: garis aksen atas (`accentColor`), badge level + badge "Save", judul, outcome, cuplikan learnings (maks 3), harga (+ compare-at), CTA "View bundle →". Link ke `resourceUrl(nicheSlug, slug)`. |
+| `SocialLinks` | Chip sosial per niche: ikon + `@1section.<slug>` untuk YouTube/Instagram/TikTok (via `socialLinks(slug)`). Dipakai di `NicheSection` (landing root) dan hero halaman subdomain niche. |
 | `BuyButton` | Client component memanggil `useCheckout`. Label default "Buy once, download instantly". Menampilkan spinner saat pending & error di bawah tombol. |
+| `LegalLayout` | Wrapper halaman statis (judul, "Last updated", prose) untuk about/FAQ/legal. |
 
 ---
 
@@ -133,8 +135,8 @@ Aksesibilitas gerak: `@media (prefers-reduced-motion: reduce)` mematikan ketiga 
 | `AdminShell` | Layout sidebar (w-60, desktop) + header. Nav: Dashboard, Niches, Products, Orders (ikon glyph). Menampilkan email user + tombol Sign out (merah). Nav versi mobile di header. |
 | `AuthGuard` | Proteksi route admin; spinner full-screen saat loading; redirect ke `/admin/login`. |
 | `Modal` | Overlay `bg-black/50 backdrop-blur-sm`, tutup via Esc/klik tombol ✕. Prop `wide` → `max-w-3xl` (vs `max-w-xl`). Catatan: belum ada focus trap & klik di luar tidak menutup. |
-| `NicheForm` | Form niche (react-hook-form + zod). Field: name, slug, tagline, description, heroImage, sortOrder, featured, active, accentColor. |
-| `ProductForm` | Form produk; input harga dalam dolar (dikonversi ×100), features 1 baris per fitur, upload multi-PDF dengan daftar file + rename label + hapus. |
+| `NicheForm` | Form niche (react-hook-form + zod). Field: name, slug, tagline, description, **audience**, **problems** (1 baris/masalah), heroImage, sortOrder, active, accentColor. |
+| `ProductForm` | Form produk; input harga dalam dolar (dikonversi ×100), features & learnings 1 baris per item, field naratif (audience/notFor/outcome/limitations/license/sampleUrl/level), upload multi-PDF dengan daftar file + rename label + hapus. |
 | `StatCard` | Kartu statistik dashboard (label uppercase, nilai besar, hint opsional). |
 
 ---
@@ -143,7 +145,7 @@ Aksesibilitas gerak: `@media (prefers-reduced-motion: reduce)` mematikan ketiga 
 
 - **Container:** `mx-auto max-w-6xl px-4 sm:px-6`.
 - **Grid:** `sm:grid-cols-2 lg:grid-cols-3` (kartu niche), `md:grid-cols-3` (steps/trust), `sm:grid-cols-2` (form).
-- **Breakpoint utama:** `md` (>=768px) untuk sidebar admin & split ProductCard; `sm` untuk grid.
+- **Breakpoint utama:** `md` (>=768px) untuk sidebar admin & layout detail resource; `sm` untuk grid.
 - **Sticky header** storefront dengan `z-40`; modal `z-50`.
 
 ---

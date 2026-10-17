@@ -19,6 +19,14 @@ const publicProductSelect = {
   name: true,
   summary: true,
   description: true,
+  audience: true,
+  notFor: true,
+  outcome: true,
+  learnings: true,
+  limitations: true,
+  license: true,
+  sampleUrl: true,
+  level: true,
   coverImage: true,
   priceAmount: true,
   compareAtAmount: true,
@@ -98,6 +106,7 @@ type ProductFileInputShape = {
   bytes?: number | null;
   checksum?: string | null;
   fileUrl?: string | null;
+  assetFileId?: string | null;
 };
 
 function toProductFileCreate(file: ProductFileInputShape, index: number) {
@@ -110,6 +119,7 @@ function toProductFileCreate(file: ProductFileInputShape, index: number) {
     bytes: file.bytes ?? null,
     checksum: file.checksum ?? null,
     fileUrl: file.fileUrl ?? null,
+    assetFileId: file.assetFileId ?? null,
     sortOrder: index,
   };
 }
@@ -129,6 +139,14 @@ export async function createProduct(input: CreateProductInput) {
     name: input.name,
     summary: input.summary ?? null,
     description: input.description ?? null,
+    audience: input.audience ?? null,
+    notFor: input.notFor ?? null,
+    outcome: input.outcome ?? null,
+    learnings: input.learnings ?? [],
+    limitations: input.limitations ?? null,
+    license: input.license ?? null,
+    sampleUrl: input.sampleUrl ?? null,
+    level: input.level ?? "FOUNDATIONS",
     coverImage: input.coverImage ?? null,
     priceAmount: input.priceAmount,
     compareAtAmount: input.compareAtAmount ?? null,
@@ -164,6 +182,14 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   if (input.name !== undefined) data.name = input.name;
   if (input.summary !== undefined) data.summary = input.summary;
   if (input.description !== undefined) data.description = input.description;
+  if (input.audience !== undefined) data.audience = input.audience;
+  if (input.notFor !== undefined) data.notFor = input.notFor;
+  if (input.outcome !== undefined) data.outcome = input.outcome;
+  if (input.learnings !== undefined) data.learnings = input.learnings;
+  if (input.limitations !== undefined) data.limitations = input.limitations;
+  if (input.license !== undefined) data.license = input.license;
+  if (input.sampleUrl !== undefined) data.sampleUrl = input.sampleUrl;
+  if (input.level !== undefined) data.level = input.level;
   if (input.coverImage !== undefined) data.coverImage = input.coverImage;
   if (input.priceAmount !== undefined) data.priceAmount = input.priceAmount;
   if (input.compareAtAmount !== undefined) data.compareAtAmount = input.compareAtAmount;

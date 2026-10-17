@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Niche, Product } from "@/lib/types";
+import { LEARNING_LEVELS, type LearningLevel } from "@/lib/types";
 import {
   useUploadPdf,
   type ProductFileInput,
@@ -24,6 +25,14 @@ const schema = z.object({
     .optional(),
   summary: z.string().max(300).optional(),
   description: z.string().max(20000).optional(),
+  audience: z.string().max(1000).optional(),
+  notFor: z.string().max(1000).optional(),
+  outcome: z.string().max(1000).optional(),
+  learnings: z.string().max(5000).optional(),
+  limitations: z.string().max(2000).optional(),
+  license: z.string().max(2000).optional(),
+  sampleUrl: z.string().max(500).optional(),
+  level: z.enum(["FOUNDATIONS", "PRACTICAL", "ADVANCED"]),
   coverImage: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be positive"),
   compareAt: z.coerce.number().min(0).optional(),
@@ -34,7 +43,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function parseFeatures(value?: string): string[] {
+const LEVEL_LABELS: Record<LearningLevel, string> = {
+  FOUNDATIONS: "Foundations",
+  PRACTICAL: "Practical",
+  ADVANCED: "Advanced",
+};
+
+function parseLines(value?: string): string[] {
   return (value ?? "")
     .split("\n")
     .map((line) => line.trim())
@@ -69,6 +84,7 @@ export function ProductForm({
       bytes: file.bytes,
       checksum: file.checksum,
       fileUrl: file.fileUrl,
+      assetFileId: file.assetFileId ?? null,
     })) ?? [],
   );
   const [uploading, setUploading] = useState(false);
@@ -81,6 +97,14 @@ export function ProductForm({
         slug: product.slug,
         summary: product.summary ?? "",
         description: product.description ?? "",
+        audience: product.audience ?? "",
+        notFor: product.notFor ?? "",
+        outcome: product.outcome ?? "",
+        learnings: (product.learnings ?? []).join("\n"),
+        limitations: product.limitations ?? "",
+        license: product.license ?? "",
+        sampleUrl: product.sampleUrl ?? "",
+        level: product.level,
         coverImage: product.coverImage ?? "",
         price: product.priceAmount / 100,
         compareAt: product.compareAtAmount ? product.compareAtAmount / 100 : undefined,
@@ -94,6 +118,14 @@ export function ProductForm({
         slug: "",
         summary: "",
         description: "",
+        audience: "",
+        notFor: "",
+        outcome: "",
+        learnings: "",
+        limitations: "",
+        license: "",
+        sampleUrl: "",
+        level: "FOUNDATIONS",
         coverImage: "",
         price: 0,
         compareAt: undefined,
@@ -125,6 +157,7 @@ export function ProductForm({
             format: result.format,
             bytes: result.bytes,
             checksum: result.checksum,
+            assetFileId: result.assetFileId ?? null,
           },
         ]);
       }
@@ -152,6 +185,14 @@ export function ProductForm({
       slug: values.slug || undefined,
       summary: values.summary || null,
       description: values.description || null,
+      audience: values.audience || null,
+      notFor: values.notFor || null,
+      outcome: values.outcome || null,
+      learnings: parseLines(values.learnings),
+      limitations: values.limitations || null,
+      license: values.license || null,
+      sampleUrl: values.sampleUrl || null,
+      level: values.level,
       coverImage: values.coverImage || null,
       priceAmount: Math.round(values.price * 100),
       compareAtAmount:
@@ -159,7 +200,7 @@ export function ProductForm({
           ? Math.round(values.compareAt * 100)
           : null,
       currency: "USD",
-      features: parseFeatures(values.features),
+      features: parseLines(values.features),
       files,
       active: values.active,
       sortOrder: values.sortOrder,
@@ -192,18 +233,60 @@ export function ProductForm({
           <Input placeholder="personal-finance-bundle" {...register("slug")} />
         </Field>
         <div className="rounded-lg bg-surface-muted p-3 text-xs text-fg ring-1 ring-border">
-          Produk & harga otomatis dibuat di Paddle saat disimpan. ID Paddle
-          (`prod_...` / `pri_...`) tersimpan sendiri ke database — tidak perlu
-          isi manual.
+          The Paddle product and price are created automatically on save. Paddle
+          IDs (`prod_...` / `pri_...`) are stored in the database for you.
         </div>
       </div>
 
-      <Field label="Summary" error={errors.summary?.message}>
-        <Input placeholder="Short selling point" {...register("summary")} />
+      <Field label="Summary" hint="Short selling point (max 300 chars)" error={errors.summary?.message}>
+        <Input placeholder="A practical method to..." {...register("summary")} />
       </Field>
 
       <Field label="Description" error={errors.description?.message}>
         <Textarea rows={4} {...register("description")} />
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Level" error={errors.level?.message}>
+          <select
+            className="w-full rounded-lg border-0 bg-card px-3 py-2 text-sm shadow-sm ring-1 ring-inset ring-border focus:ring-2 focus:ring-accent"
+            {...register("level")}
+          >
+            {LEARNING_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {LEVEL_LABELS[level]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Outcome" hint="What the buyer walks away with" error={errors.outcome?.message}>
+          <Input placeholder="Leave with a working budgeting method" {...register("outcome")} />
+        </Field>
+      </div>
+
+      <Field label="Audience" hint="Who this is for" error={errors.audience?.message}>
+        <Input placeholder="Freelancers with irregular income" {...register("audience")} />
+      </Field>
+
+      <Field label="Not for" hint="Who should not buy this" error={errors.notFor?.message}>
+        <Input placeholder="People looking for investment advice" {...register("notFor")} />
+      </Field>
+
+      <Field label="What you will learn" hint="One item per line" error={errors.learnings?.message}>
+        <Textarea rows={4} {...register("learnings")} />
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Limitations" error={errors.limitations?.message}>
+          <Textarea rows={3} placeholder="Educational material only. Not personalized advice." {...register("limitations")} />
+        </Field>
+        <Field label="License" error={errors.license?.message}>
+          <Textarea rows={3} placeholder="Personal use. Do not redistribute." {...register("license")} />
+        </Field>
+      </div>
+
+      <Field label="Free sample URL" hint="Optional link to a preview" error={errors.sampleUrl?.message}>
+        <Input placeholder="https://..." {...register("sampleUrl")} />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -229,9 +312,10 @@ export function ProductForm({
       <div className="rounded-lg bg-surface-muted p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-fg">PDF files (bundle)</p>
+            <p className="text-sm font-medium text-fg">Files</p>
             <p className="mt-0.5 text-xs text-fg-muted">
-              Upload banyak PDF. Pembeli dapat semua file ini dalam 1 kali beli.
+              Upload one or more PDFs. Buyers receive all of them in a single
+              purchase.
             </p>
           </div>
           <label className="cursor-pointer rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition hover:opacity-90">

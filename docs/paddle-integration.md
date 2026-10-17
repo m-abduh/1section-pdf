@@ -1,4 +1,4 @@
-# Paddle Integration — 1Section
+# Paddle Integration — 1section
 
 > Detail integrasi Paddle sebagai *merchant of record*: katalog (product & price), checkout, webhook fulfillment, konfigurasi sandbox/production, dan pengujian.
 
@@ -7,7 +7,7 @@
 ## 1. Ringkasan Peran Paddle
 
 - **Merchant of record:** menangani pembayaran, pajak (VAT/sales tax), invoice, refund.
-- **Katalog:** setiap produk 1Section direplikasi sebagai Paddle *product* + *price*.
+- **Katalog:** setiap produk 1section direplikasi sebagai Paddle *product* + *price*.
 - **Checkout:** dibuka via Paddle.js (overlay) menggunakan `transactionId` dari API.
 - **Konfirmasi:** webhook `transaction.completed` memicu pemberian akses unduh.
 
@@ -42,7 +42,7 @@ Komponen kode:
 ## 3. Sinkronisasi Katalog (`paddle-catalog.service.ts`)
 
 ### 3.1 Pemetaan field
-| 1Section (Product) | Paddle |
+| 1section (Product) | Paddle |
 | --- | --- |
 | `name` | product `name` |
 | `summary` \|\| `description` \|\| `name` | product `description` |

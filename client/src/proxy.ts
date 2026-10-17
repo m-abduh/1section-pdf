@@ -6,14 +6,6 @@ const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "1section.com")
 
 const DEV_SUFFIXES = ["localhost", "lvh.me"];
 
-const RESERVED_PREFIXES = ["/checkout", "/admin", "/api", "/_next"];
-
-function isReserved(pathname: string): boolean {
-  return RESERVED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
-
 function getSubdomain(hostname: string): string | null {
   const host = hostname.split(":")[0]?.toLowerCase() ?? "";
   if (!host) return null;
@@ -32,7 +24,12 @@ function getSubdomain(hostname: string): string | null {
   return null;
 }
 
-export function proxy(request: NextRequest) {
+function subdomainUrl(request: NextRequest, slug: string, path = "/"): string {
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  return `${request.nextUrl.protocol}//${slug}.${host}${path}`;
+}
+
+export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const subdomain = getSubdomain(host);
   const { pathname } = request.nextUrl;
@@ -46,16 +43,52 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  // Niche subdomain: this IS the "deep dive" area. Root path renders the niche
+  // landing page; every other path (resources, about, ...) is served as-is.
   if (subdomain && subdomain !== "www") {
-    if (pathname.startsWith("/niche/") || isReserved(pathname)) {
-      return NextResponse.next();
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = `/niche/${subdomain}`;
+      return NextResponse.rewrite(url);
     }
-    const url = request.nextUrl.clone();
-    url.pathname = `/niche/${subdomain}${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    return NextResponse.next();
+  }
+
+  // Root domain is reserved for the landing page. Anything under a niche or
+  // resource path is bounced onto the matching subdomain.
+  const nicheMatch = pathname.match(/^\/niche\/([^/]+)/);
+  if (nicheMatch) {
+    return NextResponse.redirect(subdomainUrl(request, nicheMatch[1]), 308);
+  }
+
+  const resourceMatch = pathname.match(/^\/resources\/([^/]+)/);
+  if (resourceMatch) {
+    const slug = resourceMatch[1];
+    const nicheSlug = await lookupNicheSlug(slug);
+    if (nicheSlug) {
+      return NextResponse.redirect(
+        subdomainUrl(request, nicheSlug, `/resources/${slug}`),
+        308,
+      );
+    }
   }
 
   return NextResponse.next();
+}
+
+async function lookupNicheSlug(productSlug: string): Promise<string | null> {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+  try {
+    const res = await fetch(`${apiBase}/api/products/${productSlug}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { niche?: { slug?: string } } };
+    return json.data?.niche?.slug ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export const config = {

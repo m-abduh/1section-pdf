@@ -5,6 +5,7 @@ import { uploadLimiter } from "../../middlewares/rate-limit";
 import { ApiError } from "../../utils/api-error";
 import { recordAudit } from "../../lib/audit";
 import { uploadPdfBuffer } from "../../lib/cloudinary";
+import { upsertAssetFile } from "../assets/asset.service";
 
 const PDF_MAGIC = Buffer.from("%PDF-");
 
@@ -42,6 +43,15 @@ adminUploadRouter.post(
     }
 
     const uploaded = await uploadPdfBuffer(file.buffer, file.originalname);
+    const asset = await upsertAssetFile({
+      storageKey: uploaded.storageKey,
+      provider: uploaded.provider,
+      resourceType: uploaded.resourceType,
+      format: uploaded.format,
+      mimeType: "application/pdf",
+      bytes: uploaded.bytes,
+      checksum: uploaded.checksum,
+    });
 
     await recordAudit({
       adminId: req.admin?.id,
@@ -56,6 +66,7 @@ adminUploadRouter.post(
       success: true,
       data: {
         name: file.originalname.replace(/\.[^.]+$/, ""),
+        assetFileId: asset.id,
         ...uploaded,
       },
     });

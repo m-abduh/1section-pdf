@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
-import { themeScript } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "1Section — Practical PDF bundles for every niche",
-    template: "%s | 1Section",
+    default: "1section — Practical learning for real-world problems",
+    template: "%s | 1section",
   },
   description:
-    "Instant-download PDF bundles for finance, business, marketing, and productivity.",
+    "Understand the problem, decide what to do, and act. Practical learning resources organized around real-world problems in finance, business, psychology, and career.",
   metadataBase: new URL("https://1section.com"),
+  openGraph: {
+    title: "1section — Practical learning for real-world problems",
+    description:
+      "Understand the problem, decide what to do, and act with practical learning resources.",
+    siteName: "1section",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -20,9 +26,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body className="min-h-full antialiased">
         <Providers>{children}</Providers>
       </body>

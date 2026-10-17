@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useServerInsertedHTML } from "next/navigation";
 
 export type Theme = "light" | "dark";
 
@@ -37,6 +38,10 @@ function applyTheme(theme: Theme) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
+
+  useServerInsertedHTML(() => (
+    <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+  ));
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as Theme | null;

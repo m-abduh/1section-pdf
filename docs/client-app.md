@@ -1,4 +1,4 @@
-# Client Application — 1Section
+# Client Application — 1section
 
 > Dokumentasi detail `client/`: framework, struktur folder, routing, halaman, komponen, hooks, lib, state management, dan rendering strategy.
 
@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Base URL API |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | `1section.com` | Root domain; dev pakai `localhost:3000` (`finance.localhost:3000`) |
-| `NEXT_PUBLIC_SITE_NAME` | `1Section` | Nama brand |
+| `NEXT_PUBLIC_SITE_NAME` | `1section` | Nama brand |
 | `NEXT_PUBLIC_USE_SUBDOMAINS` | `true` | `false` = pakai path `/niche/<slug>` (fallback) |
 | `NEXT_PUBLIC_PADDLE_ENV` | `sandbox` | Environment Paddle.js |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | — | Token publik Paddle.js |
@@ -40,11 +40,15 @@
 ```
 src/
 ├── app/
-│   ├── layout.tsx              # root layout: metadata, themeScript, Providers
-│   ├── page.tsx                # landing utama (RSC, ISR 60s)
+│   ├── layout.tsx              # root layout: metadata (brand 1section), themeScript, Providers
+│   ├── page.tsx                # homepage discovery (RSC, ISR 60s): masalah, paths, resources
 │   ├── globals.css             # tokens & helper (lihat design-system.md)
 │   ├── providers.tsx           # Theme → QueryClient → Auth
-│   ├── niche/[slug]/page.tsx   # landing niche (RSC, ISR 30s)
+│   ├── niche/[slug]/page.tsx   # halaman area/niche + daftar bundle (RSC, ISR 30s)
+│   ├── resources/[slug]/page.tsx # detail resource/produk (RSC, ISR 30s)
+│   ├── about/page.tsx          # editorial (statis)
+│   ├── faq/page.tsx            # FAQ (statis)
+│   ├── privacy|terms|refund|support/page.tsx # halaman legal (statis)
 │   ├── checkout/success/page.tsx
 │   └── admin/
 │       ├── layout.tsx          # AuthGuard
@@ -55,7 +59,7 @@ src/
 │       └── orders/page.tsx
 ├── components/
 │   ├── ui/                     # button, input, badge, spinner
-│   ├── site/                   # site-header, site-footer, niche-card, product-card, buy-button
+│   ├── site/                   # site-header, site-footer, niche-section, bundle-card, buy-button, legal-layout
 │   ├── admin/                  # admin-shell, auth-guard, modal, niche-form, product-form, stat-card
 │   ├── theme-provider.tsx
 │   └── theme-toggle.tsx
@@ -70,8 +74,8 @@ src/
 │   ├── auth.ts                 # token localStorage
 │   ├── format.ts               # formatCurrency/formatDate/formatRelative
 │   ├── paddle.ts               # loader Paddle.js
-│   ├── server-api.ts           # fetch RSC (getNiches/getNiche/getProduct)
-│   ├── site.ts                 # SITE_NAME, ROOT_DOMAIN, nicheUrl, useSubdomains, apiUrl
+│   ├── server-api.ts           # fetch RSC (getNiches/getNiche/getProduct/getProducts)
+│   ├── site.ts                 # SITE_NAME (1section), SITE_TAGLINE, ROOT_DOMAIN, nicheUrl, useSubdomains, isLocalRoot, apiUrl
 │   └── types.ts                # semua tipe domain
 └── proxy.ts                    # middleware routing subdomain
 ```
@@ -82,8 +86,10 @@ src/
 
 | Halaman | Tipe | Data |
 | --- | --- | --- |
-| `/` | RSC | `getNiches()` (fetch, `revalidate=60`) |
+| `/` | RSC | `getNiches()` (`revalidate=60`) — penjelasan 1section + perkenalan niche |
 | `/niche/[slug]` | RSC + `generateMetadata` | `getNiche(slug)` + `getNiches()` (`revalidate=30`), 404 via `notFound()` |
+| `/resources/[slug]` | RSC + `generateMetadata` | `getProduct(slug)` + `getNiches()` (`revalidate=30`) |
+| `/about`, `/faq`, `/privacy`, `/terms`, `/refund`, `/support` | RSC statis | `getNiches()` untuk header/footer (`revalidate=3600`) |
 | `/checkout/success` | Client | React Query poll `/orders/:orderNumber/status` (interval 3s selama PENDING) |
 | `/admin/*` | Client | React Query ke `/admin/*` |
 | Admin login | Client | `useAuth().login` |
@@ -96,7 +102,7 @@ src/
 ## 4. Routing & Layout
 
 - **Root layout** menyuntikkan `themeScript` (anti-flash dark) di `<head>` dan membungkus `Providers`.
-- **Metadata:** title template `%s | 1Section`, `metadataBase https://1section.com`.
+- **Metadata:** title template `%s | 1section`, `metadataBase https://1section.com`.
 - **Subdomain routing** via `proxy.ts` (lihat `docs/architecture.md` §5).
 - **Admin layout** dibungkus `AuthGuard`, yang merender `AdminShell` (sidebar + header) bila login.
 
@@ -105,18 +111,28 @@ src/
 ## 5. Halaman (detail)
 
 ### 5.1 Landing Utama (`app/page.tsx`)
-- Ambil niche, pilih `featured` (fallback semua).
-- Hero: badge "ONE-TIME PURCHASE · INSTANT PDF DOWNLOAD", H1 "Practical PDF bundles for every niche", subtitle brand, 2 CTA (`#bundles`, `#how`).
-- Section `#bundles`: grid `NicheCard`.
-- Section `#how`: 3 langkah (Pick your niche / Buy once with Paddle / Download instantly).
+- Ambil semua niche aktif (tanpa filter).
+- Hero: badge "PRACTICAL LEARNING · ONE-TIME PURCHASE", H1 "Practical learning for the problems that actually matter", subtitle brand, 1 CTA (`#niches`).
+- Section `#niches`: satu `NicheSection` per niche (bergantian kiri/kanan) — landing page root berfokus **menjelaskan tiap niche** (tagline, deskripsi, audience, daftar masalah) + sebaris CTA "Explore N bundles" + chip sosial (ikon + `@1section.<slug>`) ke subdomain niche.
 - Empty state bila belum ada niche.
 
-### 5.2 Landing Niche (`app/niche/[slug]/page.tsx`)
+### 5.2 Halaman Area / Niche — landing subdomain (`app/niche/[slug]/page.tsx`)
 - `generateMetadata` dari niche.
-- Hero niche: tombol "← All niches", ikon huruf, nama, tagline, deskripsi (`whitespace-pre-line`).
-- Section produk: judul "Get the {name} bundle", daftar `ProductCard`.
-- Section trust (3 kolom): One-time payment, Secured by Paddle, Instant delivery.
+- Hero dua kolom (aksen warna `accentColor`): eyebrow "1section · <Nama>", ikon huruf, tagline besar, deskripsi, kartu **audience** ("Who this is for"), CTA "Browse the bundles" + chip sosial (`SocialLinks`), dan panel "In this area" (pratinjau bundle: nama, level, harga) yang link ke `/resources/[slug]`.
+- Section **bundles** (`#bundles`): grid `BundleCard[]` (2 kolom) — badge level, judul, outcome, cuplikan learnings, harga (+ compare-at), CTA "View bundle →". Landing subdomain berfokus **menjelaskan daftar bundle**.
+- Section "What these bundles help with": daftar **masalah** (`problems`).
+- Section trust (3 kolom): One-time payment, Secured by Paddle, Instant access.
 - `notFound()` bila niche tidak ada.
+
+### 5.2a Halaman Resource (`app/resources/[slug]/page.tsx`)
+- `generateMetadata` dari produk.
+- Breadcrumb (Home / niche / nama), badge level, judul, summary.
+- Blok "What you walk away with" (outcome), "What you will learn" (learnings), Overview, "What is included" (features), audience/not-for, limitations.
+- Sidebar sticky: harga (+ compare-at), `BuyButton`, tautan sample, daftar file, license.
+- `notFound()` bila produk tidak ada.
+
+### 5.2c Halaman Editorial & Legal
+- `/about` (prinsip & editorial), `/faq` (accordion), `/privacy`, `/terms`, `/refund`, `/support` (statis, memakai `LegalLayout`).
 
 ### 5.3 Checkout Success (`app/checkout/success/page.tsx`)
 - Client component, dibungkus `<Suspense>`.
@@ -154,7 +170,7 @@ src/
 Lihat `docs/design-system.md` §5 (Button, Input/Textarea/Field, Spinner, StatusBadge/Badge).
 
 ### `components/site/*`
-Lihat `docs/design-system.md` §6 (SiteHeader, SiteFooter, NicheCard, ProductCard, BuyButton).
+Lihat `docs/design-system.md` §6 (SiteHeader, SiteFooter, NicheSection, BundleCard, BuyButton, LegalLayout).
 
 ### `components/admin/*`
 Lihat `docs/design-system.md` §7 (AdminShell, AuthGuard, Modal, NicheForm, ProductForm, StatCard).
@@ -173,7 +189,7 @@ Lihat `docs/design-system.md` §3 (ThemeProvider + themeScript + ThemeToggle).
 | `useCreateNiche/useUpdateNiche/useDeleteNiche` | POST/PATCH/DELETE | invalidate `["admin","niches"]` |
 | `useAdminProducts()` | `GET /admin/products` | key `["admin","products"]` |
 | `useCreateProduct/useUpdateProduct/useDeleteProduct` | CRUD | invalidate products |
-| `useUploadPdf()` | `POST /admin/uploads` | multipart `FormData` (field `file`) → metadata storage Cloudinary |
+| `useUploadPdf()` | `POST /admin/uploads` | multipart `FormData` (field `file`) → metadata storage Cloudinary + `assetFileId` |
 | `useSyncProductPaddle()` | `POST /admin/products/:id/paddle-sync` | invalidate products |
 | `useArchiveProductPaddle()` | `POST .../paddle-archive` | invalidate products |
 | `useAdminOrders(filters)` | `GET /admin/orders` | `placeholderData` = data sebelumnya (pagination mulus) |
@@ -222,7 +238,6 @@ Lihat `docs/design-system.md` §3 (ThemeProvider + themeScript + ThemeToggle).
 
 ## 10. Catatan Kualitas
 
-- `ProductCard` memakai `<img>` (bukan `next/image`) dengan pengecualian eslint — cover lokus di-`grayscale`.
+- `ResourceCard` memakai `<img>` (bukan `next/image`) — cover ditampilkan tanpa optimasi.
 - Halaman admin tidak memiliki proteksi server-side; hanya `AuthGuard` di client (data tetap dijaga API via JWT).
-- Beberapa label UI berbahasa campuran (Indonesia di beberapa hint admin), mis. hint Paddle & PDF.
-- `NicheForm` mengumpulkan `accentColor` tapi tidak mengirimkannya pada submit (lihat `prd.md` §kandidat evaluasi).
+- Seluruh copy storefront kini **English native** (brand `1section`); hint admin juga sudah di-Inggriskan.

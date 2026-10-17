@@ -106,11 +106,6 @@ export default function AdminNichesPage() {
                         {niche.name.charAt(0)}
                       </span>
                       <span className="font-medium text-fg">{niche.name}</span>
-                      {niche.featured ? (
-                        <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg">
-                          featured
-                        </span>
-                      ) : null}
                     </div>
                   </td>
                   <td className="px-5 py-3 text-fg-muted">{niche.slug}</td>
