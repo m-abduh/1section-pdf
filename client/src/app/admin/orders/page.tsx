@@ -44,12 +44,19 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-fg">Orders</h1>
-          <p className="mt-1 text-sm text-fg-muted">
-            One-time purchases made via Paddle.
-          </p>
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 sm:p-8">
+        <div className="cinema-grid pointer-events-none absolute inset-0 opacity-30" />
+        <div className="cinema-spotlight pointer-events-none absolute inset-0" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted">
+              Sales
+            </p>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-fg">Orders</h1>
+            <p className="mt-1 text-sm text-fg-muted">
+              One-time purchases made via Paddle.
+            </p>
+          </div>
         </div>
       </div>
 

@@ -59,7 +59,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-surface-muted">
       {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto">
         <div className="flex items-center gap-3 px-5 py-5">
           <span className="grid size-9 place-items-center rounded-xl bg-fg text-sm font-bold text-surface shadow-sm">
             1s
