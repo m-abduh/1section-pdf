@@ -40,49 +40,70 @@ export default function AdminLoginPage() {
   });
 
   return (
-    <div className="grid min-h-screen place-items-center bg-surface-muted px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-card p-8 shadow-sm ring-1 ring-border">
-        <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
-            1S
-          </span>
-          <span className="text-lg font-semibold text-fg">Admin</span>
-        </div>
-        <h1 className="mt-6 text-xl font-bold text-fg">Sign in</h1>
-        <p className="mt-1 text-sm text-fg-muted">
-          Manage niches, products, and orders.
-        </p>
+    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-surface-muted px-4">
+      <div className="cinema-grid pointer-events-none absolute inset-0 opacity-40" />
+      <div className="cinema-spotlight pointer-events-none absolute inset-0" />
 
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <Field label="Email" error={errors.email?.message}>
-            <Input
-              type="email"
-              autoComplete="email"
-              placeholder="admin@1section.com"
-              {...register("email")}
-            />
-          </Field>
+      <div className="relative w-full max-w-md">
+        <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-black/5 dark:shadow-black/40">
+          <div className="border-b border-border bg-surface-muted/60 px-8 py-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-xl bg-fg text-sm font-bold text-surface shadow-sm">
+                1s
+              </span>
+              <div>
+                <p className="text-sm font-bold tracking-tight text-fg">1section</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-fg-muted">
+                  Admin console
+                </p>
+              </div>
+            </div>
+          </div>
 
-          <Field label="Password" error={errors.password?.message}>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              {...register("password")}
-            />
-          </Field>
-
-          {serverError ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {serverError}
+          <div className="px-8 py-7">
+            <h1 className="text-2xl font-extrabold tracking-tight text-fg">
+              Sign in
+            </h1>
+            <p className="mt-1 text-sm text-fg-muted">
+              Manage niches, products, and orders.
             </p>
-          ) : null}
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? <Spinner /> : null}
-            {isSubmitting ? "Signing in..." : "Sign in"}
-          </Button>
-        </form>
+            <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+              <Field label="Email" error={errors.email?.message}>
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  placeholder="admin@1section.com"
+                  {...register("email")}
+                />
+              </Field>
+
+              <Field label="Password" error={errors.password?.message}>
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  {...register("password")}
+                />
+              </Field>
+
+              {serverError ? (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                  {serverError}
+                </p>
+              ) : null}
+
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? <Spinner /> : null}
+                {isSubmitting ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-fg-muted">
+          1section · Practical learning for real-world problems
+        </p>
       </div>
     </div>
   );

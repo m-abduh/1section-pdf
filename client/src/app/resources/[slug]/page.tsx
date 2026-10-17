@@ -195,7 +195,7 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
                   <div className="mt-5">
                     {product.active ? (
                       <BuyButton
-                        productId={product.id}
+                        product={product}
                         label="Buy and get instant access"
                       />
                     ) : (
@@ -204,17 +204,6 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
                       </p>
                     )}
                   </div>
-
-                  {product.sampleUrl ? (
-                    <a
-                      href={product.sampleUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-3 block text-center text-sm font-medium text-fg-muted transition hover:text-fg"
-                    >
-                      View a free sample →
-                    </a>
-                  ) : null}
 
                   {product.files.length > 0 ? (
                     <div className="mt-6 border-t border-border pt-5">

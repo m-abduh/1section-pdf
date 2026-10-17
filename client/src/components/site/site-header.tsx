@@ -95,9 +95,10 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-4 sm:px-6">
+        {/* Left: brand + current area */}
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-fg">
               1s
             </span>
@@ -107,20 +108,29 @@ export function SiteHeader({
           </Link>
           {currentNicheName ? (
             <>
-              <span className="text-fg-muted">/</span>
-              <span className="text-sm font-medium text-fg">
-                {currentNicheName}
+              <span className="text-fg-muted/60">/</span>
+              <span className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-fg">
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor:
+                      niches.find((n) => n.name === currentNicheName)?.accentColor ??
+                      "var(--accent)",
+                  }}
+                />
+                <span className="truncate">{currentNicheName}</span>
               </span>
             </>
           ) : null}
         </div>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        {/* Center: primary nav */}
+        <nav className="hidden items-center gap-1 md:flex">
           {globalLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-fg-muted transition hover:text-fg"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-fg"
             >
               {link.label}
             </Link>
@@ -128,21 +138,16 @@ export function SiteHeader({
           {currentNicheName ? (
             <Link
               href="/checkout/success"
-              className="text-sm font-medium text-fg-muted transition hover:text-fg"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-fg"
             >
               Retrieve purchase
             </Link>
           ) : null}
         </nav>
 
-        <div className="flex items-center gap-2">
+        {/* Right: theme */}
+        <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
-          <Link
-            href="/#niches"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
-          >
-            Explore
-          </Link>
         </div>
       </div>
     </header>

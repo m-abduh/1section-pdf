@@ -44,11 +44,25 @@ export function useAdminStats() {
       const response = await api.get<{
         data: {
           niches: number;
+          activeNiches: number;
           products: number;
+          productsWithoutFiles: number;
           orders: number;
+          pendingOrders: number;
+          failedOrders: number;
           paidOrders: number;
           revenue: number;
+          revenueLast7Days: number;
+          averageOrderValue: number;
+          conversionRate: number;
           recentOrders: AdminOrder[];
+          topProducts: {
+            productId: string;
+            name: string;
+            niche: string | null;
+            units: number;
+            revenue: number;
+          }[];
         };
       }>("/admin/stats");
       return response.data.data;

@@ -108,26 +108,33 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-fg">Products</h1>
-          <p className="text-sm text-fg-muted">
-            One-time purchase PDF bundles. Sync langsung ke katalog Paddle.
-          </p>
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 sm:p-8">
+        <div className="cinema-grid pointer-events-none absolute inset-0 opacity-30" />
+        <div className="cinema-spotlight pointer-events-none absolute inset-0" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted">
+              Catalog
+            </p>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-fg">Products</h1>
+            <p className="mt-1 text-sm text-fg-muted">
+              One-time purchase PDF bundles. Sync langsung ke katalog Paddle.
+            </p>
+          </div>
+          <Button onClick={openCreate} disabled={!canCreate}>
+            + New product
+          </Button>
         </div>
-        <Button onClick={openCreate} disabled={!canCreate}>
-          New product
-        </Button>
       </div>
 
       {message ? (
-        <p className="rounded-lg bg-surface-muted px-4 py-3 text-sm text-fg ring-1 ring-border">
+        <p className="rounded-2xl border border-border bg-surface-muted px-4 py-3 text-sm text-fg">
           {message}
         </p>
       ) : null}
 
       {!niches.isLoading && !canCreate ? (
-        <p className="rounded-2xl bg-surface-muted p-4 text-sm text-fg ring-1 ring-border">
+        <p className="rounded-2xl border border-border bg-surface-muted p-4 text-sm text-fg">
           Create a niche first before adding products.
         </p>
       ) : null}
@@ -139,42 +146,56 @@ export default function AdminProductsPage() {
       ) : null}
 
       {products.data && products.data.length === 0 ? (
-        <p className="rounded-2xl bg-card p-8 text-center text-sm text-fg-muted ring-1 ring-border">
-          No products yet.
-        </p>
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card px-6 py-16 text-center">
+          <span className="grid size-12 place-items-center rounded-2xl bg-surface-muted text-2xl">
+            ▤
+          </span>
+          <p className="mt-4 text-sm font-medium text-fg">No products yet</p>
+          <p className="mt-1 text-xs text-fg-muted">
+            Add your first bundle to start selling.
+          </p>
+          {canCreate ? (
+            <Button className="mt-5" onClick={openCreate}>
+              + New product
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       {products.data && products.data.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border">
+        <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="bg-surface-muted text-xs uppercase tracking-wide text-fg-muted">
+            <thead className="bg-surface-muted/60 text-xs uppercase tracking-wide text-fg-muted">
               <tr>
                 <th className="px-5 py-3 font-medium">Product</th>
                 <th className="px-5 py-3 font-medium">Niche</th>
                 <th className="px-5 py-3 font-medium">Price</th>
                 <th className="px-5 py-3 font-medium">Paddle</th>
-                <th className="px-5 py-3" />
+                <th className="px-5 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {products.data.map((product) => {
                 const linked = Boolean(product.paddleProductId && product.paddlePriceId);
                 return (
-                  <tr key={product.id} className="hover:bg-surface-muted">
-                    <td className="px-5 py-3">
+                  <tr key={product.id} className="transition hover:bg-surface-muted/50">
+                    <td className="px-5 py-4">
                       <div className="font-medium text-fg">{product.name}</div>
                       <div className="text-xs text-fg-muted">{product.slug}</div>
                     </td>
-                    <td className="px-5 py-3 text-fg-muted">
-                      {product.niche?.name ?? "-"}
+                    <td className="px-5 py-4">
+                      <span className="rounded-md bg-surface-muted px-2 py-0.5 text-xs text-fg-muted">
+                        {product.niche?.name ?? "-"}
+                      </span>
                     </td>
-                    <td className="px-5 py-3 text-fg">
+                    <td className="px-5 py-4 font-medium text-fg">
                       {formatCurrency(product.priceAmount, product.currency)}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-4">
                       {linked ? (
                         <div className="space-y-1">
-                          <span className="inline-flex rounded-full bg-accent px-2 py-0.5 text-xs text-accent-fg">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-fg px-2 py-0.5 text-xs text-surface">
+                            <span className="size-1.5 rounded-full bg-surface" />
                             linked
                           </span>
                           <div className="text-[11px] text-fg-muted">
@@ -184,12 +205,13 @@ export default function AdminProductsPage() {
                           </div>
                         </div>
                       ) : (
-                        <span className="inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg-muted ring-1 ring-inset ring-border">
+                          <span className="size-1.5 rounded-full bg-fg-muted" />
                           not linked
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         {!linked ? (
                           <Button
@@ -238,7 +260,7 @@ export default function AdminProductsPage() {
         onClose={() => setModalOpen(false)}
       >
         {error ? (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </p>
         ) : null}
