@@ -246,13 +246,6 @@ function CheckoutContent() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-border bg-surface-muted p-5 text-sm text-fg-muted">
-                  <p className="font-semibold text-fg">Secured by Paddle</p>
-                  <p className="mt-1">
-                    Payments and taxes are handled by Paddle as merchant of record.
-                    Your card details never touch our servers.
-                  </p>
-                </div>
               </aside>
 
               {/* Inline checkout */}
