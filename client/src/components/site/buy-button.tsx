@@ -143,11 +143,6 @@ export function BuyButton({
   // ready
   return (
     <div className="w-full space-y-3">
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
-        <span className="text-sm font-medium text-fg">
-          {formatCurrency(product.priceAmount, product.currency)}
-        </span>
-      </div>
       <div
         className="inline-checkout-container w-full overflow-hidden rounded-2xl border border-border bg-card"
         style={{ minHeight: 480 }}
