@@ -95,57 +95,76 @@ export function NicheForm({
   });
 
   return (
-    <form className="space-y-4" onSubmit={submit}>
-      <Field label="Name" error={errors.name?.message}>
-        <Input placeholder="Finance" {...register("name")} />
-      </Field>
+    <form className="space-y-6" onSubmit={submit}>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">
+          Identity
+        </p>
+        <div className="mt-3 space-y-4">
+          <Field label="Name" error={errors.name?.message}>
+            <Input placeholder="Finance" {...register("name")} />
+          </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Slug"
-          hint="Used for subdomain e.g. finance.1section.com"
-          error={errors.slug?.message}
-        >
-          <Input placeholder="finance" {...register("slug")} />
-        </Field>
+          <Field
+            label="Slug"
+            hint="Used for subdomain e.g. finance.1section.com"
+            error={errors.slug?.message}
+          >
+            <Input placeholder="finance" {...register("slug")} />
+          </Field>
+
+          <Field label="Tagline" error={errors.tagline?.message}>
+            <Input placeholder="Short one-liner" {...register("tagline")} />
+          </Field>
+        </div>
       </div>
 
-      <Field label="Tagline" error={errors.tagline?.message}>
-        <Input placeholder="Short one-liner" {...register("tagline")} />
-      </Field>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">
+          Content
+        </p>
+        <div className="mt-3 space-y-4">
+          <Field label="Description" error={errors.description?.message}>
+            <Textarea rows={4} placeholder="Explain what this niche is about" {...register("description")} />
+          </Field>
 
-      <Field label="Description" error={errors.description?.message}>
-        <Textarea rows={4} placeholder="Explain what this niche is about" {...register("description")} />
-      </Field>
+          <Field label="Audience" hint="Who this problem area is for" error={errors.audience?.message}>
+            <Input placeholder="Adults with irregular income" {...register("audience")} />
+          </Field>
 
-      <Field label="Audience" hint="Who this problem area is for" error={errors.audience?.message}>
-        <Input placeholder="Adults with irregular income" {...register("audience")} />
-      </Field>
+          <Field
+            label="Problems"
+            hint="One problem per line. Shown as the selling points of this area."
+            error={errors.problems?.message}
+          >
+            <Textarea rows={4} placeholder={"I cannot reconcile irregular income...\nI do not know whether to save or pay debt first..."} {...register("problems")} />
+          </Field>
 
-      <Field
-        label="Problems"
-        hint="One problem per line. Shown as the selling points of this area."
-        error={errors.problems?.message}
-      >
-        <Textarea rows={4} placeholder={"I cannot reconcile irregular income...\nI do not know whether to save or pay debt first..."} {...register("problems")} />
-      </Field>
+          <Field label="Hero image URL" error={errors.heroImage?.message}>
+            <Input placeholder="https://..." {...register("heroImage")} />
+          </Field>
+        </div>
+      </div>
 
-      <Field label="Hero image URL" error={errors.heroImage?.message}>
-        <Input placeholder="https://..." {...register("heroImage")} />
-      </Field>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">
+          Settings
+        </p>
+        <div className="mt-3 space-y-4">
+          <Field label="Accent color" error={errors.accentColor?.message}>
+            <Input type="color" className="h-9 w-20 p-1" {...register("accentColor")} />
+          </Field>
 
-      <Field label="Accent color" error={errors.accentColor?.message}>
-        <Input type="color" className="h-9 w-20 p-1" {...register("accentColor")} />
-      </Field>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Sort order" error={errors.sortOrder?.message}>
-          <Input type="number" {...register("sortOrder")} />
-        </Field>
-        <label className="flex items-center gap-2 pt-6 text-sm text-fg">
-          <input type="checkbox" className="size-4" {...register("active")} />
-          Active
-        </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Sort order" error={errors.sortOrder?.message}>
+              <Input type="number" {...register("sortOrder")} />
+            </Field>
+            <label className="flex items-center gap-2 pt-6 text-sm text-fg">
+              <input type="checkbox" className="size-4" {...register("active")} />
+              Active
+            </label>
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

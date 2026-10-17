@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { api, getApiErrorMessage } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
 import { getPaddle } from "@/lib/paddle";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
