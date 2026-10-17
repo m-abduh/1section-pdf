@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("admin")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model Niche {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  tagline     String?
+  description String?
+  heroImage   String?
+  accentColor String    @default("#6366F1")
+  featured    Boolean   @default(false)
+  active      Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@index([active, sortOrder])
+  @@map("niches")
+}
+
+model Product {
+  id              String      @id @default(cuid())
+  nicheId         String
+  niche           Niche       @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  slug            String      @unique
+  name            String
+  summary         String?
+  description     String?
+  coverImage      String?
+  priceAmount     Int
+  compareAtAmount Int?
+  currency        String       @default("USD")
+  paddleProductId String?
+  paddlePriceId   String?
+  paddleSyncedAt  DateTime?
+  features        Json         @default("[]")
+  active          Boolean      @default(true)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  files           ProductFile[]
+  orderItems      OrderItem[]
+
+  @@index([nicheId, active, sortOrder])
+  @@map("products")
+}
+
+model ProductFile {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  fileUrl   String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
+  @@map("product_files")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  orderNumber         String      @unique
+  email               String?
+  customerName        String?
+  status              OrderStatus @default(PENDING)
+  currency            String      @default("USD")
+  subtotal            Int         @default(0)
+  total               Int         @default(0)
+  paddleTransactionId String?     @unique
+  paddleCustomerId    String?
+  paidAt              DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  items               OrderItem[]
+
+  @@index([status, createdAt])
+  @@index([email])
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String          @id @default(cuid())
+  orderId       String
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName   String
+  unitAmount    Int
+  quantity      Int             @default(1)
+  paddlePriceId String?
+  createdAt     DateTime        @default(now())
+  tokens        DownloadToken[]
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model DownloadToken {
+  id            String    @id @default(cuid())
+  token         String    @unique
+  orderItemId   String
+  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  fileId        String?
+  label         String
+  fileUrl       String
+  expiresAt     DateTime
+  maxDownloads  Int       @default(5)
+  downloadCount Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@index([orderItemId])
+  @@map("download_tokens")
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  type        String
+  payload     Json
+  processedAt DateTime @default(now())
+
+  @@map("webhook_events")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
