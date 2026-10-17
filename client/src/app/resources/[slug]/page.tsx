@@ -195,8 +195,7 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
                   <div className="mt-5">
                     {product.active ? (
                       <BuyButton
-                        productId={product.id}
-                        productSlug={product.slug}
+                        product={product}
                         label="Buy and get instant access"
                       />
                     ) : (
