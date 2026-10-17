@@ -147,7 +147,6 @@ export function BuyButton({
         <span className="text-sm font-medium text-fg">
           {formatCurrency(product.priceAmount, product.currency)}
         </span>
-        <span className="text-xs text-fg-muted">Secure checkout by Paddle</span>
       </div>
       <div
         className="inline-checkout-container w-full overflow-hidden rounded-2xl border border-border bg-card"
