@@ -12,7 +12,7 @@
 - **Konfirmasi:** webhook `transaction.completed` memicu pemberian akses unduh.
 
 Komponen kode:
-- Server SDK: `server/src/lib/paddle.ts`, `server/src/modules/paddle/paddle-catalog.service.ts`, `checkout.service.ts`, `webhooks/*`.
+- Server SDK: `client/src/lib/server/lib/paddle.ts`, `client/src/lib/server/modules/paddle/paddle-catalog.service.ts`, `checkout.service.ts`, `webhooks/*`.
 - Client SDK: `client/src/lib/paddle.ts` + `hooks/use-checkout.ts`.
 
 ---
@@ -174,7 +174,7 @@ Buyer ──GET /api/downloads/:token──► API ──► file PDF
 4. Bayar dengan **kartu uji Paddle sandbox**.
 5. Webhook sandbox memicu order `PAID` → halaman sukses menampilkan link unduh.
 6. Verifikasi: `orders` status PAID, `download_tokens` terisi, `webhook_events` mencatat event.
-7. Fallback: pastikan webhook dapat menjangkau server (gunakan tunnel bila lokal, mis. untuk mengekspos `localhost:4000`).
+7. Fallback: pastikan webhook dapat menjangkau app (gunakan tunnel bila lokal, mis. untuk mengekspos `localhost:3000`).
 
 ---
 

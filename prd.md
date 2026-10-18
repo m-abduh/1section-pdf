@@ -18,7 +18,7 @@
 | [`docs/data-model.md`](docs/data-model.md) | Skema Prisma, relasi, index, migrasi, seed |
 | [`docs/api-spec.md`](docs/api-spec.md) | Referensi REST API lengkap (request/response/error) |
 | [`docs/client-app.md`](docs/client-app.md) | Detail aplikasi Next.js (routing, halaman, komponen, hooks, lib) — termasuk halaman resource, about/FAQ/legal |
-| [`docs/server-app.md`](docs/server-app.md) | Detail API Express (modul, middleware, util, alur eksekusi) |
+| [`docs/server-app.md`](docs/server-app.md) | Detail backend (Next.js route handlers, modul, helper, util, alur eksekusi) |
 | [`docs/paddle-integration.md`](docs/paddle-integration.md) | Integrasi Paddle (katalog, checkout, webhook, pengujian) |
 | [`docs/operations.md`](docs/operations.md) | Setup, env, skrip, DNS/subdomain, deployment, storage |
 
@@ -225,7 +225,7 @@ Detail: [`docs/data-model.md`](docs/data-model.md).
 
 ## 10. Arsitektur (ringkas)
 
-Monorepo npm workspaces: **client** (Next.js 16 App Router, RSC+ISR) + **server** (Express 5 + Prisma + Paddle SDK) + **PostgreSQL**. Routing subdomain via middleware Next. Webhook Paddle memicu fulfillment. Detail: [`docs/architecture.md`](docs/architecture.md).
+Single app Next.js 16 (App Router, RSC+ISR) di `client/`, backend via **route handlers** + **Prisma** + **Paddle SDK** + **PostgreSQL**. Routing subdomain via middleware Next. Webhook Paddle memicu fulfillment. Detail: [`docs/architecture.md`](docs/architecture.md).
 
 ---
 

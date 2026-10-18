@@ -1,6 +1,6 @@
 # API Specification — 1section
 
-> Referensi REST API `server/` (Express 5). Base URL default: `http://localhost:4000`. Semua endpoint API berada di prefix **`/api`**. Response selalu JSON dengan envelope konsisten.
+> Referensi REST API. Backend diimplementasikan sebagai **Next.js Route Handlers** di `client/src/app/api/**/route.ts`. Base URL default: same-origin (`/api`); dev `http://localhost:3000`. Semua endpoint API berada di prefix **`/api`**. Response selalu JSON dengan envelope konsisten.
 
 ---
 

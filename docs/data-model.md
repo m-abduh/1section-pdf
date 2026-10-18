@@ -1,6 +1,6 @@
 # Data Model — 1section
 
-> Skema database aktual (`server/prisma/schema.prisma`), relasi, index, aturan, riwayat migrasi, dan data seed. Database: **PostgreSQL**.
+> Skema database aktual (`client/prisma/schema.prisma`), relasi, index, aturan, riwayat migrasi, dan data seed. Database: **PostgreSQL**.
 
 ---
 
@@ -287,7 +287,7 @@ Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
 
 ---
 
-## 4. Riwayat Migrasi (`server/prisma/migrations/`)
+## 4. Riwayat Migrasi (`client/prisma/migrations/`)
 
 | Migrasi | Isi |
 | --- | --- |
@@ -303,7 +303,7 @@ Order 1───∞ OrderItem ──∞ Entitlement ──∞ DownloadToken
 
 ---
 
-## 5. Seed (`server/prisma/seed.ts`)
+## 5. Seed (`client/prisma/seed.ts`)
 
 Dijalankan dengan `npm run db:seed`. Idempotent (`upsert`). Admin dari env `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` (default `admin@1section.com` / `ChangeMe123!` / `Administrator`; bcrypt cost 10).
 

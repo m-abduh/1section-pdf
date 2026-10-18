@@ -31,7 +31,7 @@ jobs:
       PADDLE_API_KEY: ci_paddle_key
       PADDLE_WEBHOOK_SECRET: ci_paddle_webhook_secret
       PADDLE_ENV: sandbox
-      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: ""
       NEXT_PUBLIC_ROOT_DOMAIN: 1section.com
 
     steps:

@@ -26,7 +26,7 @@
 ### Environment (`NEXT_PUBLIC_*`)
 | Var | Default | Fungsi |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Base URL API |
+| `NEXT_PUBLIC_API_URL` | *(kosong)* | Base URL API; kosong = same-origin (`/api`) |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | `1section.com` | Root domain; dev pakai `localhost:3000` (`finance.localhost:3000`) |
 | `NEXT_PUBLIC_SITE_NAME` | `1section` | Nama brand |
 | `NEXT_PUBLIC_USE_SUBDOMAINS` | `true` | `false` = pakai path `/niche/<slug>` (fallback) |

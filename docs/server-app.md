@@ -1,46 +1,35 @@
 # Server Application — 1section
 
-> Dokumentasi detail `server/`: bootstrap, middleware, modul, lapisan kode, util, konfigurasi env, dan alur eksekusi internal. Stack: Express 5 + TypeScript + Prisma + Paddle SDK.
+> Backend kini berjalan sebagai **Next.js Route Handlers** di dalam `client/` (`client/src/app/api/*`). Tidak ada service Express terpisah. Stack: Next.js 16 + TypeScript + Prisma + Paddle SDK.
 
 ---
 
 ## 1. Entry Point & Bootstrap
 
-### `src/index.ts`
-- Memanggil `createApp()`, `app.listen(env.PORT)`.
-- Graceful shutdown pada `SIGINT`/`SIGTERM`: tutup server lalu `prisma.$disconnect()`.
-- Error saat start → log + `process.exit(1)`.
+### Next.js App Router
+- Entry: `client/src/app/layout.tsx` (root layout) + `client/src/proxy.ts` (middleware/subdomain routing).
+- API: `client/src/app/api/**/route.ts` (route handlers, Node runtime).
+- Bootstrap DB: Prisma Client di `client/src/lib/server/lib/prisma.ts` (singleton).
+- Graceful shutdown: ditangani platform (Vercel/Node).
 
-### `src/app.ts` — urutan middleware
-```
-helmet({ crossOriginResourcePolicy: "cross-origin" })
-cors(corsOptions)                      // whitelist + subdomain
-morgan(prod ? "combined" : "dev")
-POST /api/webhooks  → express.raw({ type: "application/json", limit:"1mb" }) → webhookRouter
-express.json({ limit: "2mb" })
-express.urlencoded({ extended: true })
-/admin/uploads → multer memoryStorage (di router)
-/api → apiRouter
-notFoundHandler → errorHandler
-app.set("trust proxy", 1)
-```
+### Middleware (`client/src/proxy.ts`)
+- Subdomain routing: niche subdomain `/` → rewrite ke `/niche/<slug>`; root `/niche/<slug>` & `/resources/<slug>` → 308 ke subdomain.
+- Admin subdomain (`admin.*`) → rewrite ke `/admin/*`.
 
-**CORS (`isAllowedOrigin`):** izinkan origin tanpa origin (server-to-server), origin yang ada di `CORS_ORIGINS`, hostname `localhost`/`*.localhost`, `ROOT_DOMAIN`, dan semua subdomain `*.ROOT_DOMAIN`. `credentials: true`. Methods GET/POST/PATCH/PUT/DELETE/OPTIONS.
+### Lapisan kode
+Route handler (`route.ts`) → service (`*.service.ts`) → Prisma. Validasi via zod di route handler. Auth/rate-limit helper di `client/src/lib/server/next-helpers.ts`.
 
 ---
-
-## 2. Konfigurasi Env (`src/config/env.ts`)
+## 2. Konfigurasi Env (`client/src/lib/server/config/env.ts`)
 
 Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_ORIGINS`), `isProduction`.
 
 | Var | Aturan | Default |
 | --- | --- | --- |
 | `NODE_ENV` | enum dev/test/prod | `development` |
-| `PORT` | int > 0 | `4000` |
 | `DATABASE_URL` | wajib | — |
 | `CLIENT_URL` | url | `http://localhost:3000` |
 | `ROOT_DOMAIN` | string | `1section.com` |
-| `CORS_ORIGINS` | string CSV | `http://localhost:3000` |
 | `JWT_SECRET` | min 16 | — |
 | `JWT_EXPIRES_IN` | string | `7d` |
 | `PADDLE_ENV` | sandbox/production | `sandbox` |
@@ -66,7 +55,7 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 
 ---
 
-## 3. Lapisan Middleware (`src/middlewares/`)
+## 3. Lapisan Helper (`client/src/lib/server/next-helpers.ts`)
 
 ### `auth.ts` — `requireAuth`
 - Ekstrak `Authorization: Bearer <token>`; tidak ada → `401`.
@@ -105,7 +94,7 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 
 ---
 
-## 6. Routing Utama (`src/routes/index.ts`)
+## 6. Routing Utama (`client/src/app/api/**/route.ts`)
 
 ```
 GET  /api/health
@@ -128,7 +117,7 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 
 ---
 
-## 7. Modul (pola routes → controller → service → schema)
+## 7. Modul (pola route handler → service → schema)
 
 ### 7.1 `auth`
 - **routes:** `POST /login` (validate body, rate-limited), `GET /me` (requireAuth), `POST /logout` (requireAuth).
@@ -190,7 +179,7 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 
 ## 8. Tipe
 
-`src/types/express.d.ts` menambah `Express.Request.admin?: Pick<AdminUser,"id"|"email"|"name"|"role">`.
+Admin auth via `getAdmin(request)` / `requireAdminSync(admin)` di `client/src/lib/server/next-helpers.ts` (JWT dari `Authorization` header).
 
 ---
 
@@ -238,17 +227,16 @@ POST /api/webhooks/paddle
 
 | Script | Perintah |
 | --- | --- |
-| dev | `tsx watch src/index.ts` |
-| build | `tsc -p tsconfig.json` → `dist/` |
-| start | `node dist/index.js` |
+| dev | `next dev` |
+| build | `next build` |
+| start | `next start` |
 | typecheck | `tsc --noEmit` |
-| test | `vitest run` |
 | lint | `eslint .` (root) |
 | prisma | `prisma generate/migrate dev/migrate deploy/studio` |
 | seed | `tsx prisma/seed.ts` |
-| reconcile | `tsx src/scripts/reconcile.ts` |
+| reconcile | `POST /api/admin/orders/reconcile` (admin) |
 
-Root menjalankan lewat workspaces (`npm run dev:server`, dsb).
+Root mendelegasikan ke workspace `client` (`npm run dev`, `npm run build`, dsb).
 
 ---
 

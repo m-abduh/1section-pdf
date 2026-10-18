@@ -16,31 +16,26 @@
 ## 2. Instalasi
 
 ```bash
-npm install            # dari root; meng-install seluruh workspace
+npm install            # dari root (single workspace: client)
 ```
 
-Struktur workspace: `client` + `server`. Root mengorkestrasi via `concurrently`.
+Struktur: single app Next.js di `client/`. Seluruh backend (Prisma, service, route handlers) berada di dalam `client/`.
 
 ---
 
 ## 3. Environment
-
-Salin contoh lalu isi:
 ```bash
-cp server/.env.example server/.env
 cp client/.env.example client/.env
+cp client/.env.example client/.env.local
 ```
 
-### `server/.env`
+### `client/.env` (dan `.env.local`)
 | Var | Keterangan |
 | --- | --- |
 | `NODE_ENV` | `development` / `production` |
-| `PORT` | default `4000` |
 | `DATABASE_URL` | koneksi PostgreSQL |
-| `CLIENT_URL` | origin client (fallback URL email) |
-| `APP_URL` | origin publik untuk tautan di email (opsional, default `CLIENT_URL`) |
+| `CLIENT_URL` / `APP_URL` | origin publik (untuk tautan email) |
 | `ROOT_DOMAIN` | `1section.com` |
-| `CORS_ORIGINS` | CSV origin tambahan |
 | `JWT_SECRET` | string acak panjang (>=16) |
 | `JWT_EXPIRES_IN` | default `7d` |
 | `PADDLE_ENV` | `sandbox` / `production` |
@@ -59,18 +54,15 @@ cp client/.env.example client/.env
 | `EMAIL_FROM` | pengirim email |
 | `RATE_LIMIT_DISABLED` | `true` hanya untuk test otomatis |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | akun seed |
-
-### `client/.env`
-| Var | Keterangan |
-| --- | --- |
-| `NEXT_PUBLIC_API_URL` | URL API |
+| `NEXT_PUBLIC_API_URL` | kosong untuk same-origin (default); isi URL absolut bila perlu |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | root domain (dev `localhost:3000`, prod `1section.com`) |
 | `NEXT_PUBLIC_SITE_NAME` | nama brand |
 | `NEXT_PUBLIC_USE_SUBDOMAINS` | `true` (default) / `false` = mode path `/niche/<slug>` |
 | `NEXT_PUBLIC_PADDLE_ENV` | `sandbox`/`production` |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | token publik Paddle.js |
+| `NEXT_PUBLIC_SOCIAL_HANDLE_PREFIX` | default `1section.` |
 
-> ⚠️ **Secrets:** file `.env` di-ignore git (`.gitignore`), tetapi jika kunci Paddle pernah ikut ter-commit/ter-share, **rotate** di dashboard Paddle. Dokumentasi ini sengaja tidak memuat nilai kunci.
+> ⚠️ **Secrets:** file `.env` di-ignore git. Dokumentasi ini sengaja tidak memuat nilai kunci.
 
 ---
 
@@ -94,26 +86,22 @@ Migration yang ada (urut): `init` → `add_paddle_product_id` → `product_files
 ## 5. Menjalankan
 
 ```bash
-npm run dev            # server (4000) + client (3000) bersamaan
-# atau terpisah
-npm run dev:server
-npm run dev:client
+npm run dev            # next dev (port 3000)
 ```
 
 Build & start:
 ```bash
-npm run build          # build server lalu client
-npm run start -w server
+npm run build          # next build
 npm run start -w client
-npm run typecheck      # typecheck server + client
+npm run typecheck      # tsc --noEmit
 ```
 
 ### Akses Dev
 - Storefront: `http://localhost:3000`
 - Niche: `http://finance.localhost:3000` (produksi: `https://finance.1section.com`)
-- Admin: `http://admin.localhost:3000` (fallback path: `http://localhost:3000/admin`)
+- Admin: `http://admin.localhost:3000/admin` (fallback path: `http://localhost:3000/admin`)
 
-`*.localhost` otomatis diizinkan (Next `allowedDevOrigins`, CORS server, resolver subdomain proxy). Alternatif: `lvh.me`.
+`*.localhost` otomatis diizinkan (Next `allowedDevOrigins`, resolver subdomain proxy). Alternatif: `lvh.me`.
 
 ---
 
@@ -121,15 +109,14 @@ npm run typecheck      # typecheck server + client
 
 | Script | Fungsi |
 | --- | --- |
-| `npm run dev` | server + client |
-| `npm run dev:server` / `dev:client` | salah satu |
-| `npm run build` / `build:server` / `build:client` | build |
-| `npm run typecheck` | typecheck keduanya |
-| `npm run lint` | ESLint (root, semua workspace) |
-| `npm test` | Vitest (server) |
-| `npm run prisma:generate` / `prisma:migrate` / `prisma:deploy` | Prisma |
+| `npm run dev` | next dev |
+| `npm run build` | next build |
+| `npm run typecheck` | tsc --noEmit |
+| `npm run lint` | ESLint (root) |
+| `npm test` | (belum ada test client) |
+| `npm run prisma:generate` / `prisma:migrate` / `prisma:deploy` | Prisma (di client/) |
 | `npm run db:seed` | seed |
-| `npm run reconcile -w server` | terbitkan ulang entitlement order `PAID` yang bolong |
+
 
 ---
 
@@ -173,7 +160,7 @@ Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.
 - API: `GET /api/health` → `{ status: "ok", time }`.
 - Log: `morgan` (combined di produksi).
 - Perhatikan tabel `webhook_events`: `status = FAILED` (retry) atau `attempts` naik → ada masalah fulfillment. `status = RECEIVED` lama → proses menggantung.
-- Jalankan **reconciliation** berkala: `npm run reconcile -w server` (atau `POST /api/admin/orders/reconcile`) untuk menerbitkan entitlement yang bolong pada order `PAID`.
+- Jalankan **reconciliation** berkala: `POST /api/admin/orders/reconcile` (admin) untuk menerbitkan entitlement yang bolong pada order `PAID`.
 - Pantau `orders` status `PENDING` yang menggantung (indikasi webhook bermasalah).
 - `AuditLog` mencatat aksi admin penting.
 

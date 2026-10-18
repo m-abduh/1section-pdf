@@ -4,27 +4,21 @@
   "private": true,
   "description": "1section.com - multi-niche landing pages with Paddle one-time purchases and admin dashboard",
   "workspaces": [
-    "client",
-    "server"
+    "client"
   ],
   "scripts": {
-    "dev": "concurrently -k -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:client": "npm run dev -w client",
-    "dev:server": "npm run dev -w server",
-    "build": "npm run build -w server && npm run build -w client",
-    "build:client": "npm run build -w client",
-    "build:server": "npm run build -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "dev": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "typecheck": "npm run typecheck -w client",
     "lint": "eslint .",
-    "test": "npm run test -w server",
-    "prisma:generate": "npm run prisma:generate -w server",
-    "prisma:migrate": "npm run prisma:migrate -w server",
-    "prisma:deploy": "npm run prisma:deploy -w server",
-    "db:seed": "npm run db:seed -w server"
+    "test": "npm run test -w client",
+    "prisma:generate": "npm run prisma:generate -w client",
+    "prisma:migrate": "npm run prisma:migrate -w client",
+    "prisma:deploy": "npm run prisma:deploy -w client",
+    "db:seed": "npm run db:seed -w client"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "concurrently": "^10.0.6",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
     "typescript-eslint": "^8.18.0"

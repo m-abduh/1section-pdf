@@ -18,94 +18,51 @@
         │                   │                    │
         └───────────────────┴────────────────────┘
                             │
-                 ┌──────────▼──────────┐
-                 │  Next.js 16 (client) │  ← SSR/RSC + ISR + middleware proxy
-                 │  App Router          │
-                 └──────────┬───────────┘
-                             │ REST /api/*  (JSON, Axios)
-                 ┌──────────▼───────────┐
-                 │  Express 5 (server)  │  ← REST API, auth, webhook
-                 │  Prisma ORM          │
-                 └────┬──────────┬──────┘
-                      │          │
-              ┌───────▼──┐   ┌───▼──────────────┐
-              │PostgreSQL│   │ Cloudinary (PDF) │
-              └──────────┘   └──────────────────┘
-                      │
-                      │ Paddle API (products, prices, transactions)
-                      │ Paddle Webhooks ──► POST /api/webhooks/paddle
-              ┌───────▼────────┐
-              │     Paddle     │  (merchant of record, pajak, checkout)
-              └────────────────┘
+                  ┌──────────▼──────────┐
+                  │  Next.js 16 (app)   │  ← SSR/RSC + ISR + middleware proxy
+                  │  App Router          │  ← Route handlers = API (Prisma, auth, webhook)
+                  └────┬──────────┬──────┘
+                       │          │
+               ┌───────▼──┐   ┌───▼──────────────┐
+               │PostgreSQL│   │ Cloudinary (PDF) │
+               └──────────┘   └──────────────────┘
+                       │
+                       │ Paddle API (products, prices, transactions)
+                       │ Paddle Webhooks ──► POST /api/webhooks/paddle
+               ┌───────▼────────┐
+               │     Paddle     │  (merchant of record, pajak, checkout)
+               └────────────────┘
 ```
 
 ---
 
 ## 2. Struktur Repository
 
-Monorepo **npm workspaces** (`client`, `server`) dijoinkan lewat `concurrently`.
+Single app Next.js 16 (App Router) di `client/`. Seluruh backend (Prisma, service, route handlers) berada di dalam `client/`. Tidak ada service terpisah.
 
 ```
 1section/
-├── package.json            # workspaces + script orkestrasi (dev/build/typecheck/prisma/seed)
+├── package.json            # single workspace: client
 ├── package-lock.json
-├── prd.md                  # PRD utama (index ke docs/)
-├── docs/                   # dokumentasi detail (file ini, design-system, api-spec, dst.)
+├── prd.md
+├── docs/
 ├── .gitignore
 │
-├── client/                 # Next.js 16 App Router
-│   ├── next.config.ts      # allowedDevOrigins, remotePatterns (res.cloudinary.com), images
-│   ├── postcss.config.mjs  # @tailwindcss/postcss (satu plugin, tanpa opsi)
-│   ├── tsconfig.json       # strict, path alias @/* -> ./src/*
-│   ├── next-env.d.ts       # generated Next (jangan diedit)
-│   ├── tsconfig.tsbuildinfo# generated incremental build info
-│   ├── .gitignore          # node_modules, .next, out, build, .env*, next-env.d.ts, *.tsbuildinfo
-│   ├── .env / .env.example
-│   └── src/
-│       ├── app/            # routes (RSC + client pages)
-│       ├── components/     # ui, site, admin, theme
-│       ├── hooks/          # react-query wrappers + auth context
-│       ├── lib/            # api client, types, formatters, paddle, site config, server-api
-│       └── proxy.ts        # subdomain routing middleware
-│
-└── server/                 # Express + Prisma
-    ├── package.json
-    ├── tsconfig.json       # CommonJS, outDir dist
-    ├── .gitignore          # node_modules, dist, .env*, uploads/* (!.gitkeep), *.log, *.tsbuildinfo
+└── client/                 # Next.js 16 App Router (full-stack)
+    ├── next.config.ts
+    ├── tsconfig.json
+    ├── prisma/             # schema.prisma, seed.ts, migrations/
     ├── .env / .env.example
-    ├── prisma/
-    │   ├── schema.prisma
-    │   ├── seed.ts
-    │   └── migrations/     # 4 migration + migration_lock.toml (provider = postgresql)
     └── src/
-        ├── index.ts        # bootstrap + graceful shutdown
-        ├── app.ts          # express app (middleware global)
-        ├── config/env.ts   # validasi env (zod)
-        ├── routes/index.ts # mount semua router
-        ├── modules/        # per-domain (auth, niches, products, checkout, orders, downloads, webhooks, uploads, assets, stats, paddle)
-        ├── middlewares/    # auth, rate-limit, validate, error
-        ├── lib/            # prisma, jwt, paddle, cloudinary, email, audit
-        ├── scripts/        # reconcile (rekonsiliasi entitlement)
-        ├── utils/          # api-error, ids, slug
-        └── types/          # express.d.ts (Request.admin)
+        ├── app/            # routes (RSC + client pages) + api/* route handlers
+        ├── components/     # ui, site, admin, theme
+        ├── hooks/          # react-query wrappers + auth context
+        ├── lib/
+        │   ├── server/     # Prisma, services, auth, email, paddle, cloudinary, audit, utils
+        │   └── ...         # api client, types, formatters, site config, server-api
+        └── proxy.ts        # subdomain routing middleware
+
 ```
-
-### 2.1 Inventaris Artefak & File Pendukung
-
-| Path | Jenis | Peran |
-| --- | --- | --- |
-| `.gitignore` (root) | config | Abaikan `node_modules`, `dist`, `.next`, `.env*` (kecuali `.env.example`), `*.log`, `*.tsbuildinfo` |
-| `client/.gitignore`, `server/.gitignore` | config | Aturan ignore per-paket |
-| `client/postcss.config.mjs` | config | Satu plugin `@tailwindcss/postcss` |
-| `client/next-env.d.ts` | generated | Tipe Next (jangan diedit) |
-| `client/tsconfig.tsbuildinfo` | generated | Cache build TypeScript incremental |
-| `server/prisma/migrations/migration_lock.toml` | generated | Lock provider Prisma (`postgresql`) |
-| `.github/workflows/ci.yml` | config | CI: Postgres service, migrate, lint, typecheck, test, build |
-| `eslint.config.mjs` | config | Flat ESLint config (root, semua workspace) |
-| `client/.next/`, `server/dist/`, `client/node_modules`+`server/node_modules` | build/deps | Hasil build & dependensi (tidak didokumentasi isinya) |
-| `package-lock.json` | lockfile | Dependensi terkunci |
-
----
 
 ## 3. Lapisan Aplikasi
 
@@ -115,11 +72,11 @@ Monorepo **npm workspaces** (`client`, `server`) dijoinkan lewat `concurrently`.
 - **Config runtime** via `NEXT_PUBLIC_*` (di-inline saat build).
 - **Data client** via React Query (cache 30s, retry 1, tanpa refetch on focus).
 
-### 3.2 Server (Express)
-Pola berlapis per modul: `*.routes.ts` (mapping + middleware) → `*.controller.ts` (HTTP I/O) → `*.service.ts` (logika bisnis + Prisma) → `*.schema.ts` (zod). Tidak ada ORM call langsung di controller.
+### 3.2 API (Next.js Route Handlers)
+Pola berlapis: `src/app/api/**/route.ts` (HTTP I/O) → `src/lib/server/modules/*/*.service.ts` (logika bisnis + Prisma) → `*.schema.ts` (zod). Tidak ada ORM call langsung di route handler. Middleware auth/rate-limit/validation di `src/lib/server/next-helpers.ts`.
 
 ### 3.3 Database
-PostgreSQL via Prisma. Single source of truth schema: `server/prisma/schema.prisma`. Lihat `docs/data-model.md`.
+PostgreSQL via Prisma. Single source of truth schema: `client/prisma/schema.prisma`. Lihat `docs/data-model.md`.
 
 ### 3.4 File Storage
 PDF disimpan di **Cloudinary** sebagai aset privat (`type: authenticated`). Saat pembeli mengunduh, server membangun **signed URL** berumur pendek lalu redirect 302. Metadata storage disimpan pada `ProductFile` (`storageKey`, `resourceType`, `format`, `bytes`, `checksum`, `provider`). Provider `EXTERNAL`/`LOCAL` (dengan `fileUrl`) tetap didukung untuk kompatibilitas. Lihat `docs/operations.md` §8.
@@ -130,8 +87,7 @@ PDF disimpan di **Cloudinary** sebagai aset privat (`type: authenticated`). Saat
 
 ### 4.1 Render Storefront (ISR)
 ```
-Browser → Next (RSC) → fetch `${NEXT_PUBLIC_API_URL}/api/niches`
-        → Express → Prisma → PostgreSQL → JSON
+Browser → Next (RSC) → service langsung (Prisma) → PostgreSQL → JSON
         → HTML (di-cache revalidate 30–60s)
 ```
 
@@ -236,13 +192,13 @@ Catatan: rate limiting in-memory (per-instance); untuk multi-instance produksi g
 
 - **Envelope response konsisten:** `{ success, data, pagination? }` / `{ success:false, error:{ code, message, details? } }`.
 - **Tipe client** diduplikasi manual di `client/src/lib/types.ts` (belum ada shared package / codegen dari Prisma).
-- **`req.admin`** dideklarasikan di `server/src/types/express.d.ts`.
+- **Admin auth** via `getAdmin(request)` / `requireAdminSync(admin)` di `client/src/lib/server/next-helpers.ts` (JWT dari `Authorization` header).
 
 ---
 
 ## 9. Deployment (ringkasan)
 
-- Dua layanan: **web (Next)** dan **api (Express)**, plus **PostgreSQL terkelola**.
+- Satu layanan: **Next.js (web + api route handlers)**, plus **PostgreSQL terkelola**.
 - Client butuh `NEXT_PUBLIC_*` saat build; server butuh secrets Paddle & JWT.
 - Webhook Paddle harus menunjuk ke URL publik `https://<api-host>/api/webhooks/paddle`.
 - DNS: wildcard `*.<domain>` harus mengarah ke web agar subdomain niche & admin bekerja.

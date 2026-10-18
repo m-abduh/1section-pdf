@@ -64,7 +64,7 @@ export async function proxy(request: NextRequest) {
   const resourceMatch = pathname.match(/^\/resources\/([^/]+)/);
   if (resourceMatch) {
     const slug = resourceMatch[1];
-    const nicheSlug = await lookupNicheSlug(slug);
+    const nicheSlug = await lookupNicheSlug(request, slug);
     if (nicheSlug) {
       return NextResponse.redirect(
         subdomainUrl(request, nicheSlug, `/resources/${slug}`),
@@ -76,10 +76,10 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-async function lookupNicheSlug(productSlug: string): Promise<string | null> {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+async function lookupNicheSlug(request: NextRequest, productSlug: string): Promise<string | null> {
+  const origin = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
   try {
-    const res = await fetch(`${apiBase}/api/products/${productSlug}`, {
+    const res = await fetch(`${origin}/api/products/${productSlug}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
