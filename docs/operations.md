@@ -148,6 +148,29 @@ API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC
 5. **Seed admin** sekali (atau buat admin manual) dan ganti password default.
 6. Verifikasi end-to-end di sandbox sebelum production.
 
+### 9.1 Netlify
+
+Next.js 16 didukung Netlify via OpenNext dengan **zero-config** (plugin terpasang otomatis; jangan install `@netlify/plugin-nextjs` kecuali mau pin versi). Repo sudah menyiapkan `netlify.toml` (`NODE_VERSION=20`) dan `postinstall: prisma generate`.
+
+- **Prisma:** `prisma/schema.prisma` memakai `binaryTargets = ["native", "rhel-openssl-3.0.x"]` agar engine cocok dengan runtime Lambda Netlify (Node 20+, OpenSSL 3).
+- **Env vars:** set di *Site configuration → Environment variables* (scope **Builds + Functions**). Wajib: `DATABASE_URL`, `JWT_SECRET`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `CLOUDINARY_*`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_ROOT_DOMAIN`, `NEXT_PUBLIC_PADDLE_ENV`. `NEXT_PUBLIC_*` harus ada saat build.
+- **Migrasi:** jalankan `prisma migrate deploy` dari lokal terhadap `DATABASE_URL` produksi (sekali per rilis). Jangan taruh di build agar tidak balapan antar-deploy.
+- **Seed admin:** jalankan `npm run db:seed` dari lokal ke DB produksi, lalu ganti password default.
+- **Rate limit in-memory** (`next-helpers.ts`) tidak persisten antar-invocation Lambda — fungsional tapi tidak akurat; pindah ke store eksternal (mis. Upstash Redis) bila butuh ketat.
+
+#### Subdomain per niche di Netlify (tanpa wildcard, plan Free/Starter)
+
+Wildcard `*.domain` **hanya** tersedia di Netlify Pro+ dan harus diaktifkan lewat support. Di plan Free, subdomain per niche tetap bisa dengan **domain alias eksplisit**:
+
+1. Jadikan `1section.com` sebagai **primary domain** di *Domain management*.
+2. Tambahkan tiap subdomain niche sebagai **domain alias**: `career.1section.com`, `finance.1section.com`, dst. (batas praktis ±50 alias).
+3. Di DNS provider, buat **CNAME** per subdomain → `<site>.netlify.app` (mis. host `career`, value `namasite.netlify.app`).
+4. Tambahkan alias **sebelum** memicu provisioning SSL agar semua subdomain masuk ke sertifikat; klik *Renew certificate* bila perlu.
+5. `NEXT_PUBLIC_ROOT_DOMAIN=1section.com` (tanpa protokol). `src/proxy.ts` membaca host dan me-rewrite `career.1section.com/` → `/niche/career`.
+6. Niches baru = tambah alias + CNAME lagi (bukan otomatis).
+
+Catatan: URL default `*.netlify.app` **tidak** mendukung subdomain niche (tidak ada DNS). `proxy.ts` mendeteksi host non-root dan menyajikan path `/niche/<slug>` apa adanya, alih-alih redirect ke subdomain yang tidak resolve.
+
 ---
 
 ## 10. Healthcheck & Monitoring
@@ -166,8 +189,8 @@ API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC
 - [ ] `JWT_SECRET` kuat & unik produksi.
 - [ ] API key/token/webhook secret Paddle **production** (bukan sandbox) — **rotate** bila pernah terpapar.
 - [ ] Kredensial Cloudinary diisi (`CLOUDINARY_*`).
-- [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + wildcard DNS + TLS.
-- [ ] `NEXT_PUBLIC_ROOT_DOMAIN` benar.
+- [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + TLS. Subdomain di Netlify Free: daftarkan tiap subdomain sebagai **domain alias** + CNAME (wildcard hanya Pro+).
+- [ ] `NEXT_PUBLIC_ROOT_DOMAIN` benar (tanpa protokol, mis. `1section.com`).
 - [ ] Migration ter-apply (`prisma migrate deploy`).
 - [ ] Password admin default diganti (kebijakan min 8 char + huruf + angka).
 - [ ] Webhook terdaftar & terverifikasi.

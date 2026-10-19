@@ -1,0 +1,8 @@
+[build]
+  command = "next build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# The Next.js Runtime is installed automatically by Netlify. Do not add
+# @netlify/plugin-nextjs to package.json unless you intend to pin a version.

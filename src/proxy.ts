@@ -24,6 +24,16 @@ function getSubdomain(hostname: string): string | null {
   return null;
 }
 
+function isKnownHost(hostname: string): boolean {
+  const host = hostname.split(":")[0]?.toLowerCase() ?? "";
+  if (!host) return false;
+
+  for (const suffix of new Set([ROOT_DOMAIN, ...DEV_SUFFIXES])) {
+    if (host === suffix || host.endsWith(`.${suffix}`)) return true;
+  }
+  return false;
+}
+
 function subdomainUrl(request: NextRequest, slug: string, path = "/"): string {
   const host = request.headers.get("host") ?? request.nextUrl.host;
   return `${request.nextUrl.protocol}//${slug}.${host}${path}`;
@@ -51,6 +61,13 @@ export async function proxy(request: NextRequest) {
       url.pathname = `/niche/${subdomain}`;
       return NextResponse.rewrite(url);
     }
+    return NextResponse.next();
+  }
+
+  // Hosts that are not the configured root domain (e.g. the default
+  // *.netlify.app URL) cannot resolve niche subdomains, so serve paths as-is
+  // instead of redirecting to an unreachable subdomain.
+  if (!isKnownHost(host)) {
     return NextResponse.next();
   }
 
