@@ -64,8 +64,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Hosts that are not the configured root domain (e.g. the default
-  // *.netlify.app URL) cannot resolve niche subdomains, so serve paths as-is
+  // Hosts that are not the configured root domain (e.g. a default preview URL
+  // like *.vercel.app) cannot resolve niche subdomains, so serve paths as-is
   // instead of redirecting to an unreachable subdomain.
   if (!isKnownHost(host)) {
     return NextResponse.next();

@@ -142,36 +142,33 @@ API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC
 ## 9. Deployment (pola umum)
 
 1. **Database:** sediakan PostgreSQL terkelola; untuk hosting serverless gunakan koneksi **pooled** (pgbouncer/Prisma Accelerate); jalankan `prisma migrate deploy`.
-2. **App:** deploy satu layanan Next.js (root repo) ke hosting Next.js/Node (mis. Vercel, Netlify, VPS). Set seluruh env produksi (`DATABASE_URL`, `JWT_SECRET`, Paddle, Cloudinary). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
+2. **App:** deploy satu layanan Next.js (root repo) ke hosting Next.js/Node (mis. Vercel, VPS). Set seluruh env produksi (`DATABASE_URL`, `JWT_SECRET`, Paddle, Cloudinary). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
 3. **Build-time:** `NEXT_PUBLIC_*` di-*inline* saat build → set sebelum `next build`.
 4. **Webhook:** daftarkan URL publik `https://<host>/api/webhooks/paddle` di Paddle, subscribe event, simpan secret.
 5. **Seed admin** sekali (atau buat admin manual) dan ganti password default.
 6. Verifikasi end-to-end di sandbox sebelum production.
 
-### 9.1 Netlify
+### 9.1 Vercel
 
-Next.js 16 didukung Netlify via OpenNext dengan **zero-config** (plugin terpasang otomatis; jangan install `@netlify/plugin-nextjs` kecuali mau pin versi). Repo sudah menyiapkan `netlify.toml` (`NODE_VERSION=20`) dan `postinstall: prisma generate`.
+Next.js 16 didukung Vercel native dengan **zero-config** — tidak perlu file konfigurasi tambahan. Repo sudah menyiapkan `postinstall: prisma generate`.
 
-- **Prisma:** `prisma/schema.prisma` memakai `binaryTargets = ["native", "rhel-openssl-3.0.x"]` agar engine cocok dengan runtime Lambda Netlify (Node 20+, OpenSSL 3).
-- **Env vars:** set di *Site configuration → Environment variables* (scope **Builds + Functions**). Wajib: `DATABASE_URL`, `JWT_SECRET`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `CLOUDINARY_*`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_ROOT_DOMAIN`, `NEXT_PUBLIC_PADDLE_ENV`. `NEXT_PUBLIC_*` harus ada saat build.
-- **Migrasi:** jalankan `prisma migrate deploy` dari lokal terhadap `DATABASE_URL` produksi (sekali per rilis). Jangan taruh di build agar tidak balapan antar-deploy.
-- **Seed admin:** jalankan `npm run db:seed` dari lokal ke DB produksi, lalu ganti password default.
-- **Rate limit in-memory** (`next-helpers.ts`) tidak persisten antar-invocation Lambda — fungsional tapi tidak akurat; pindah ke store eksternal (mis. Upstash Redis) bila butuh ketat.
-- **Build settings:** `netlify.toml` menetapkan `publish = ".next"`. Pastikan override lama di UI (*Base directory* / *Publish directory*, mis. `client/.next`) **dihapus** agar tidak menimpa.
-- **Secrets scanning:** Netlify menolak build bila nilai env var ditemukan di repo. `netlify.toml` menyetel `SECRETS_SCAN_OMIT_KEYS` untuk nilai non-secret (`NEXT_PUBLIC_ROOT_DOMAIN`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_FOLDER`, `ADMIN_EMAIL`, `ADMIN_NAME`). **`JWT_SECRET` sengaja tidak di-omit** — nilainya wajib unik/kuat; bila scanner menemukannya, berarti masih memakai placeholder dan harus diganti.
+- **Prisma:** `prisma/schema.prisma` memakai `binaryTargets = ["native", "rhel-openssl-3.0.x"]` agar engine cocok dengan runtime function Vercel (Amazon Linux, OpenSSL 3).
+- **Env vars:** set di *Project → Settings → Environment Variables* (*Production*, *Preview*, *Development*). Wajib: `DATABASE_URL`, `JWT_SECRET`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `CLOUDINARY_*`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_ROOT_DOMAIN=1section.com`, `NEXT_PUBLIC_PADDLE_ENV`. `NEXT_PUBLIC_*` di-*inline* saat build → ubah butuh redeploy.
+- **Migrasi:** `prisma migrate deploy` dari lokal terhadap `DATABASE_URL` produksi (sekali per rilis).
+- **Seed admin:** `npm run db:seed` dari lokal ke DB produksi, lalu ganti password default.
+- **Webhook:** daftarkan `https://1section.com/api/webhooks/paddle` di Paddle.
+- **Rate limit in-memory** (`next-helpers.ts`) tidak persisten antar-invocation — fungsional tapi tidak akurat; pindah ke store eksternal (mis. Upstash Redis) bila butuh ketat.
 
-#### Subdomain per niche di Netlify (tanpa wildcard, plan Free/Starter)
+#### Subdomain per niche di Vercel (wildcard)
 
-Wildcard `*.domain` **hanya** tersedia di Netlify Pro+ dan harus diaktifkan lewat support. Di plan Free, subdomain per niche tetap bisa dengan **domain alias eksplisit**:
+Vercel mendukung **wildcard domain** tanpa perlu minta support:
 
-1. Jadikan `1section.com` sebagai **primary domain** di *Domain management*.
-2. Tambahkan tiap subdomain niche sebagai **domain alias**: `career.1section.com`, `finance.1section.com`, dst. (batas praktis ±50 alias).
-3. Di DNS provider, buat **CNAME** per subdomain → `<site>.netlify.app` (mis. host `career`, value `namasite.netlify.app`).
-4. Tambahkan alias **sebelum** memicu provisioning SSL agar semua subdomain masuk ke sertifikat; klik *Renew certificate* bila perlu.
-5. `NEXT_PUBLIC_ROOT_DOMAIN=1section.com` (tanpa protokol). `src/proxy.ts` membaca host dan me-rewrite `career.1section.com/` → `/niche/career`.
-6. Niches baru = tambah alias + CNAME lagi (bukan otomatis).
+1. Tambah `1section.com` dan `*.1section.com` di *Settings → Domains* (prefix `*`).
+2. Sertifikat wildcard perlu akses DNS challenge: arahkan **nameserver domain ke Vercel**, atau (bila DNS tetap di provider lain) delegasikan `_acme-challenge` ke `ns1.vercel-dns.com` / `ns2.vercel-dns.com`.
+3. `NEXT_PUBLIC_ROOT_DOMAIN=1section.com`. `src/proxy.ts` me-rewrite `career.1section.com/` → `/niche/career`.
+4. Niche baru otomatis tercakup `*.1section.com` — tanpa perubahan DNS.
 
-Catatan: URL default `*.netlify.app` **tidak** mendukung subdomain niche (tidak ada DNS). `proxy.ts` mendeteksi host non-root dan menyajikan path `/niche/<slug>` apa adanya, alih-alih redirect ke subdomain yang tidak resolve.
+Catatan: plan **Hobby** dibatasi untuk non-komersial dan 50 domain/project; untuk jualan gunakan Pro.
 
 ---
 
@@ -191,7 +188,7 @@ Catatan: URL default `*.netlify.app` **tidak** mendukung subdomain niche (tidak 
 - [ ] `JWT_SECRET` kuat & unik produksi.
 - [ ] API key/token/webhook secret Paddle **production** (bukan sandbox) — **rotate** bila pernah terpapar.
 - [ ] Kredensial Cloudinary diisi (`CLOUDINARY_*`).
-- [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + TLS. Subdomain di Netlify Free: daftarkan tiap subdomain sebagai **domain alias** + CNAME (wildcard hanya Pro+).
+- [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + TLS. Di Vercel: tambah `*.domain` (wildcard) + nameserver/delegasi `_acme-challenge`.
 - [ ] `NEXT_PUBLIC_ROOT_DOMAIN` benar (tanpa protokol, mis. `1section.com`).
 - [ ] Migration ter-apply (`prisma migrate deploy`).
 - [ ] Password admin default diganti (kebijakan min 8 char + huruf + angka).
