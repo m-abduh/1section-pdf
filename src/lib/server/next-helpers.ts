@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ApiError } from "./utils/api-error";
 import { verifyAuthToken } from "./lib/jwt";
 import { prisma } from "./lib/prisma";
+import { env } from "./config/env";
 import type { z } from "zod";
 
 export type AdminCtx = { id: string; email: string; name: string | null; role: string };
@@ -75,6 +76,7 @@ export function parseParams<T>(params: Record<string, string>, schema: z.ZodType
 // Simple in-memory rate limiter (per-instance; fine for single deployment).
 const buckets = new Map<string, { count: number; reset: number }>();
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
+  if (env.RATE_LIMIT_DISABLED) return true;
   const now = Date.now();
   const b = buckets.get(key);
   if (!b || b.reset < now) {

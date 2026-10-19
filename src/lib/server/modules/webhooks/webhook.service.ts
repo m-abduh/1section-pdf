@@ -1,9 +1,7 @@
 import { Prisma, type Order } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { paddle } from "../../lib/paddle";
-import { sendAccessLinkEmail } from "../../lib/email";
 import { fulfillOrder, revokeOrderEntitlements } from "../downloads/download.service";
-import { createOrderAccessLink } from "../orders/order.service";
 import {
   decideRefund,
   readNumber,
@@ -105,22 +103,6 @@ async function markOrderPaid(event: PaddleEvent): Promise<void> {
   const created = await fulfillOrder(order.id);
   if (created === 0) {
     console.warn(`[webhook] order ${order.id} produced no download tokens`);
-  }
-
-  if (email) {
-    try {
-      const accessToken = await createOrderAccessLink(order.id, email);
-      await sendAccessLinkEmail({
-        to: email,
-        orderNumber: order.orderNumber,
-        token: accessToken,
-      });
-    } catch (error) {
-      console.error(
-        `[webhook] failed to send access link for order ${order.id}`,
-        error,
-      );
-    }
   }
 }
 

@@ -137,7 +137,7 @@ src/
 ### 5.3 Checkout Success (`app/checkout/success/page.tsx`)
 - Client component, dibungkus `<Suspense>`.
 - Sumber referensi pesanan: query `?order=` **atau** `?_ptxn=`/`?txn=` (Paddle transaction ID) → `localStorage` (`section_last_order`) → input manual (`txn_...` atau `ORD-...`).
-- **Bukti akses:** `?access=<token>` (dari `successUrl` checkout, atau magic-link email) disimpan ke state; token ini membuat halaman langsung terotorisasi setelah bayar — **tanpa form verify**. Bila tidak ada token, tampil pesan + tombol "Resend access link" yang memanggil `POST /orders/:orderNumber/access-link` (body kosong → pakai email order).
+- **Bukti akses:** `?access=<token>` (dari `successUrl` checkout) disimpan ke state; token ini membuat halaman langsung terotorisasi setelah bayar — **tanpa form verify**.
 - Poll `GET /orders/:orderNumber/status` (dengan `access`/`email`); saat `authorized && PAID` tampilkan link unduh (label + sisa kuota) ke `${apiUrl()}${download.url}`.
 - State: loading spinner, error box, "Waiting for payment confirmation", kartu status akses.
 - `StatusBadge` mendukung `PARTIALLY_REFUNDED`.

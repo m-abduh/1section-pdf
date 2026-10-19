@@ -26,16 +26,15 @@ Struktur: single app Next.js di root repo. Seluruh backend (Prisma, service, rou
 ## 3. Environment
 ```bash
 cp .env.example .env
-cp .env.example .env.local
 ```
 
-### `.env` (dan `.env.local`)
+Hanya **4 var wajib**: `DATABASE_URL`, `JWT_SECRET`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`. Sisanya punya default di `src/lib/server/config/env.ts`.
+
+### `.env`
 | Var | Keterangan |
 | --- | --- |
 | `NODE_ENV` | `development` / `production` |
 | `DATABASE_URL` | koneksi PostgreSQL |
-| `CLIENT_URL` / `APP_URL` | origin publik (untuk tautan email) |
-| `ROOT_DOMAIN` | `1section.com` |
 | `JWT_SECRET` | string acak panjang (>=16) |
 | `JWT_EXPIRES_IN` | default `7d` |
 | `PADDLE_ENV` | `sandbox` / `production` |
@@ -45,18 +44,15 @@ cp .env.example .env.local
 | `DOWNLOAD_TOKEN_TTL_HOURS` | default `72` |
 | `DOWNLOAD_MAX_HITS` | default `5` |
 | `DOWNLOAD_SIGNED_URL_TTL_MINUTES` | masa berlaku signed URL Cloudinary, default `10` |
-| `ACCESS_LINK_TTL_MINUTES` | masa berlaku magic-link, default `60` |
-| `ORDER_ACCESS_TTL_HOURS` | masa berlaku tautan akses pesanan (checkout + email), default `720` |
+| `ORDER_ACCESS_TTL_HOURS` | masa berlaku tautan akses pesanan (checkout), default `720` |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | kredensial Cloudinary (PDF privat) |
 | `CLOUDINARY_FOLDER` | folder aset, default `1section/bundles` |
-| `EMAIL_PROVIDER` | `resend` / `log` |
-| `RESEND_API_KEY` | API key Resend (bila provider resend) |
-| `EMAIL_FROM` | pengirim email |
 | `RATE_LIMIT_DISABLED` | `true` hanya untuk test otomatis |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | akun seed |
 | `NEXT_PUBLIC_API_URL` | kosong untuk same-origin (default); isi URL absolut bila perlu |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | root domain (dev `localhost:3000`, prod `1section.com`) |
 | `NEXT_PUBLIC_SITE_NAME` | nama brand |
+| `NEXT_PUBLIC_SITE_TAGLINE` | tagline brand |
 | `NEXT_PUBLIC_USE_SUBDOMAINS` | `true` (default) / `false` = mode path `/niche/<slug>` |
 | `NEXT_PUBLIC_PADDLE_ENV` | `sandbox`/`production` |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | token publik Paddle.js |
@@ -127,7 +123,6 @@ Agar `finance.1section.com`, `admin.1section.com`, dsb. bekerja:
 2. Tambahkan **wildcard DNS** `*.<domain>` → layanan web (untuk semua subdomain niche).
 3. Konfigurasi TLS wildcard di host/reverse proxy.
 4. Set `NEXT_PUBLIC_ROOT_DOMAIN=1section.com` dan `NEXT_PUBLIC_USE_SUBDOMAINS=true`.
-5. Set `ROOT_DOMAIN` (server) sesuai domain produksi.
 
 API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC_API_URL` kosong. Isi `NEXT_PUBLIC_API_URL` hanya bila API dipisah ke host lain (mis. `api.1section.com`).
 
@@ -147,7 +142,7 @@ API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC
 ## 9. Deployment (pola umum)
 
 1. **Database:** sediakan PostgreSQL terkelola; untuk hosting serverless gunakan koneksi **pooled** (pgbouncer/Prisma Accelerate); jalankan `prisma migrate deploy`.
-2. **App:** deploy satu layanan Next.js (root repo) ke hosting Next.js/Node (mis. Vercel, Netlify, VPS). Set seluruh env produksi (`DATABASE_URL`, `JWT_SECRET`, Paddle, Cloudinary, email). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
+2. **App:** deploy satu layanan Next.js (root repo) ke hosting Next.js/Node (mis. Vercel, Netlify, VPS). Set seluruh env produksi (`DATABASE_URL`, `JWT_SECRET`, Paddle, Cloudinary). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
 3. **Build-time:** `NEXT_PUBLIC_*` di-*inline* saat build → set sebelum `next build`.
 4. **Webhook:** daftarkan URL publik `https://<host>/api/webhooks/paddle` di Paddle, subscribe event, simpan secret.
 5. **Seed admin** sekali (atau buat admin manual) dan ganti password default.
@@ -171,10 +166,8 @@ API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC
 - [ ] `JWT_SECRET` kuat & unik produksi.
 - [ ] API key/token/webhook secret Paddle **production** (bukan sandbox) — **rotate** bila pernah terpapar.
 - [ ] Kredensial Cloudinary diisi (`CLOUDINARY_*`).
-- [ ] Provider email aktif (`RESEND_API_KEY` + `EMAIL_FROM`, domain terverifikasi SPF/DKIM).
-- [ ] `APP_URL` menunjuk domain publik (untuk tautan magic-link).
 - [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + wildcard DNS + TLS.
-- [ ] `ROOT_DOMAIN` benar.
+- [ ] `NEXT_PUBLIC_ROOT_DOMAIN` benar.
 - [ ] Migration ter-apply (`prisma migrate deploy`).
 - [ ] Password admin default diganti (kebijakan min 8 char + huruf + angka).
 - [ ] Webhook terdaftar & terverifikasi.

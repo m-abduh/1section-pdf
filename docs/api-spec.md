@@ -248,7 +248,7 @@ Membuat order lokal + Paddle transaction.
 ### `GET /api/orders/:orderNumber/status`
 Status order publik + link unduhan (bila `PAID` **dan** akses terbukti).
 - **Param:** `orderNumber` boleh berupa kode order toko (`ORD-...`) **atau** Paddle transaction ID (`txn_...`) dari redirect Paddle.
-- **Query bukti akses:** `access=<token>` (dari `successUrl` checkout atau magic-link email) **atau** `email=<email>`.
+- **Query bukti akses:** `access=<token>` (dari `successUrl` checkout) **atau** `email=<email>`.
 - Bila tidak ada bukti yang cocok → response tetap `200` tetapi `authorized:false` dan `downloads:[]` (tidak membocorkan token / keberadaan email). **Rate-limited** (30/menit/IP).
 - Bila `PAID` dan `authorized`, server melakukan self-heal `fulfillOrder` (idempotent).
 - `email` pada response **dihapus** (hanya `hasEmail:boolean`).
@@ -280,12 +280,6 @@ Status order publik + link unduhan (bila `PAID` **dan** akses terbukti).
 }
 ```
 **Errors:** `404` (order tidak ada), `429 RATE_LIMITED`.
-
-### `POST /api/orders/:orderNumber/access-link`
-Minta kirim ulang tautan akses (tanpa form verify). **Rate-limited** (5/jam/IP).
-**Body:** `{ "email": "buyer@example.com" }` (`email` opsional — bila kosong, pakai email yang tersimpan pada order).
-**Perilaku:** bila order ada, buat `AccessLink` (TTL `ACCESS_LINK_TTL_MINUTES`) dan kirim email berisi tautan `APP_URL/checkout/success?order=...&access=...`. Bila `email` diberikan dan berbeda dari email order, tidak dikirim. Response **selalu generik** (anti-enumerasi).
-**200:** `{ "success": true, "data": { "sent": true } }`.
 
 ### `GET /api/admin/orders` 🔒
 List order ber-paginasi.
@@ -403,7 +397,6 @@ Bukan endpoint publik biasa — dipanggil Paddle.
 | GET | `/api/products/:slug` | — | Detail produk publik |
 | POST | `/api/checkout` | — | Buat order + Paddle transaction (rate-limited) |
 | GET | `/api/orders/:orderNumber/status` | bukti | Status order + downloads |
-| POST | `/api/orders/:orderNumber/access-link` | — | Kirim magic-link (rate-limited) |
 | GET | `/api/downloads/:token` | — | Unduh file (rate-limited) |
 | POST | `/api/webhooks/paddle` | sig | Webhook Paddle |
 | GET | `/api/admin/niches` | 🔒 | List niche (admin) |

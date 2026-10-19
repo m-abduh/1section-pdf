@@ -6,6 +6,21 @@ const prisma = new PrismaClient();
 
 const niches = [
   {
+    slug: "career",
+    name: "Career",
+    tagline: "Turn a target role into a concrete learning plan.",
+    description:
+      "Learning for beginners who know the role they want but are unsure which skills matter and in what order to build them.",
+    audience: "Early-career professionals and career switchers.",
+    problems: [
+      "I am unsure which skills a target role actually requires.",
+      "I cannot tell which gaps matter most.",
+      "I need a plan I can start this week.",
+    ],
+    accentColor: "#F59E0B",
+    sortOrder: 1,
+  },
+  {
     slug: "finance",
     name: "Finance",
     tagline: "Make better money decisions, one clear section at a time.",
@@ -19,22 +34,38 @@ const niches = [
       "I want a realistic method, not generic advice.",
     ],
     accentColor: "#10B981",
-    sortOrder: 1,
+    sortOrder: 2,
   },
   {
-    slug: "business",
-    name: "Business",
-    tagline: "Test the idea before you invest heavily in it.",
+    slug: "education",
+    name: "Education",
+    tagline: "Learn how to learn something difficult, on purpose.",
     description:
-      "Learning for first-time founders and small sellers who must reduce uncertainty before spending time and money.",
-    audience: "First-time founders and solo sellers validating a new idea.",
+      "Learning for people who must master a hard subject without a teacher: breaking it down, practising deliberately, and checking real understanding.",
+    audience:
+      "Self-directed learners and students tackling a difficult subject alone.",
     problems: [
-      "I have an idea but no evidence that customers need it.",
-      "I do not understand my costs or a reasonable price.",
-      "I am unsure which validation step to take first.",
+      "I do not know how to break a big subject into steps.",
+      "I re-read and forget instead of actually understanding.",
+      "I cannot tell whether I have really learned something.",
     ],
-    accentColor: "#6366F1",
-    sortOrder: 2,
+    accentColor: "#3B82F6",
+    sortOrder: 3,
+  },
+  {
+    slug: "health",
+    name: "Health",
+    tagline: "Build sustainable routines without chasing quick fixes.",
+    description:
+      "Practical, evidence-aware learning for people who want lasting sleep, movement, and nutrition habits rather than short-lived resets.",
+    audience: "Adults who want a realistic, sustainable health routine.",
+    problems: [
+      "I start a routine and drop it once life gets busy.",
+      "I cannot tell which advice is worth following.",
+      "I want steady progress, not an all-or-nothing plan.",
+    ],
+    accentColor: "#EF4444",
+    sortOrder: 4,
   },
   {
     slug: "psychology",
@@ -49,22 +80,84 @@ const niches = [
       "I want a realistic routine, not motivation quotes.",
     ],
     accentColor: "#EC4899",
-    sortOrder: 3,
+    sortOrder: 5,
   },
   {
-    slug: "career",
-    name: "Career",
-    tagline: "Turn a target role into a concrete learning plan.",
+    slug: "technology",
+    name: "Technology",
+    tagline: "Understand the tools before you depend on them.",
     description:
-      "Learning for beginners who know the role they want but are unsure which skills matter and in what order to build them.",
-    audience: "Early-career professionals and career switchers.",
+      "Learning for people who use technology daily but want to understand how it works, choose tools with confidence, and avoid common traps.",
+    audience:
+      "Non-specialists who want practical, working knowledge of everyday tech.",
     problems: [
-      "I am unsure which skills a target role actually requires.",
-      "I cannot tell which gaps matter most.",
-      "I need a plan I can start this week.",
+      "I use tools I do not actually understand.",
+      "I cannot judge which option fits my needs.",
+      "I worry about privacy and security but do not know where to start.",
     ],
-    accentColor: "#F59E0B",
-    sortOrder: 4,
+    accentColor: "#8B5CF6",
+    sortOrder: 6,
+  },
+  {
+    slug: "parenting",
+    name: "Parenting",
+    tagline: "Handle everyday parenting problems with a calmer plan.",
+    description:
+      "Practical learning for parents facing common, specific challenges: routines, boundaries, and behaviour, grounded in evidence rather than trends.",
+    audience: "Parents who want practical approaches to everyday challenges.",
+    problems: [
+      "I react in the moment instead of responding with a plan.",
+      "I cannot tell which advice is worth following.",
+      "I want a routine that works for the whole family.",
+    ],
+    accentColor: "#F97316",
+    sortOrder: 7,
+  },
+  {
+    slug: "relationship",
+    name: "Relationship",
+    tagline: "Communicate better in the relationships that matter.",
+    description:
+      "Evidence-aware learning for improving communication, boundaries, and conflict in personal relationships without clinical jargon.",
+    audience:
+      "Adults who want to improve communication and handle conflict better.",
+    problems: [
+      "The same argument keeps repeating.",
+      "I struggle to set and hold boundaries.",
+      "I want to communicate clearly without escalating.",
+    ],
+    accentColor: "#F43F5E",
+    sortOrder: 8,
+  },
+  {
+    slug: "business",
+    name: "Business",
+    tagline: "Test the idea before you invest heavily in it.",
+    description:
+      "Learning for first-time founders and small sellers who must reduce uncertainty before spending time and money.",
+    audience: "First-time founders and solo sellers validating a new idea.",
+    problems: [
+      "I have an idea but no evidence that customers need it.",
+      "I do not understand my costs or a reasonable price.",
+      "I am unsure which validation step to take first.",
+    ],
+    accentColor: "#6366F1",
+    sortOrder: 9,
+  },
+  {
+    slug: "investing",
+    name: "Investing",
+    tagline: "Think clearly about risk before you put money to work.",
+    description:
+      "Educational learning for beginners who want to understand risk, diversification, and their own goals before making investing decisions.",
+    audience: "Beginners who want to understand investing fundamentals.",
+    problems: [
+      "I do not understand the risks behind an investment.",
+      "I cannot tell speculation from a sound plan.",
+      "I want to align decisions with my own goals.",
+    ],
+    accentColor: "#0EA5E9",
+    sortOrder: 10,
   },
 ];
 

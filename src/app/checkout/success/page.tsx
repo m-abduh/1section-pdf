@@ -73,8 +73,8 @@ function SuccessContent() {
               Your downloads
             </h1>
             <p className="mt-2 max-w-xl text-sm text-fg-muted">
-              Enter your Paddle transaction ID below to access your purchase, or
-              use the link we emailed you.
+              Enter your Paddle transaction ID or order number below to access
+              your purchase.
             </p>
           </div>
         </div>
@@ -151,12 +151,12 @@ function SuccessContent() {
                     ✉
                   </div>
                   <h2 className="mt-4 text-lg font-semibold text-fg">
-                    Check your email
+                    Access your purchase
                   </h2>
                   <p className="mt-2 text-sm text-fg-muted">
-                    Your payment is confirmed. We&rsquo;ve emailed your access
-                    link — open it to see your downloads here. If you lost the
-                    email, contact support.
+                    Your payment is confirmed. Open the access link from your
+                    checkout to view your downloads. If you need help, contact
+                    support with your order number.
                   </p>
                 </div>
               ) : null}
@@ -179,12 +179,6 @@ function SuccessContent() {
                       <h2 className="text-lg font-semibold text-fg">
                         Your downloads
                       </h2>
-                      {orderQuery.data.hasEmail ? (
-                        <p className="text-xs text-fg-muted">
-                          We also emailed your access link, so you can come back
-                          anytime.
-                        </p>
-                      ) : null}
                     </div>
                   </div>
 

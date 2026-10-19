@@ -22,14 +22,12 @@ Route handler (`route.ts`) → service (`*.service.ts`) → Prisma. Validasi via
 ---
 ## 2. Konfigurasi Env (`src/lib/server/config/env.ts`)
 
-Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_ORIGINS`), `isProduction`.
+Validasi zod, gagal cepat saat boot. Export `env`, `isProduction`, `cloudinaryConfig`, `hasCloudinary`.
 
 | Var | Aturan | Default |
 | --- | --- | --- |
 | `NODE_ENV` | enum dev/test/prod | `development` |
 | `DATABASE_URL` | wajib | — |
-| `CLIENT_URL` | url | `http://localhost:3000` |
-| `ROOT_DOMAIN` | string | `1section.com` |
 | `JWT_SECRET` | min 16 | — |
 | `JWT_EXPIRES_IN` | string | `7d` |
 | `PADDLE_ENV` | sandbox/production | `sandbox` |
@@ -38,17 +36,12 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 | `PADDLE_TAX_CATEGORY` | string | `standard` |
 | `DOWNLOAD_TOKEN_TTL_HOURS` | int > 0 | `72` |
 | `DOWNLOAD_MAX_HITS` | int > 0 | `5` |
-| `APP_URL` | url (opsional) | `CLIENT_URL` |
 | `DOWNLOAD_SIGNED_URL_TTL_MINUTES` | int > 0 | `10` |
-| `ACCESS_LINK_TTL_MINUTES` | int > 0 | `60` |
 | `ORDER_ACCESS_TTL_HOURS` | int > 0 | `720` |
 | `CLOUDINARY_CLOUD_NAME` | string (opsional) | — |
 | `CLOUDINARY_API_KEY` | string (opsional) | — |
 | `CLOUDINARY_API_SECRET` | string (opsional) | — |
 | `CLOUDINARY_FOLDER` | string | `1section/bundles` |
-| `EMAIL_PROVIDER` | `resend`/`log` | `resend` |
-| `RESEND_API_KEY` | string (opsional) | — |
-| `EMAIL_FROM` | string | `1section <no-reply@1section.com>` |
 | `RATE_LIMIT_DISABLED` | bool (opsional) | `false` |
 
 (Seed memakai `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` — dibaca langsung di `seed.ts`.)
@@ -84,7 +77,6 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 | `jwt.ts` | `signAuthToken({ sub, email, role, tokenVersion })`, `verifyAuthToken` (throw `401` bila invalid/expired). |
 | `paddle.ts` | Instance `Paddle(env.PADDLE_API_KEY, { environment })` + `paddleWebhookSecret`. |
 | `cloudinary.ts` | Klien Cloudinary (lazy), `isCloudinaryConfigured`, `uploadPrivatePdf(buffer, name)`, `signedDownloadUrl(publicId, opts)`. |
-| `email.ts` | `sendAccessLinkEmail({ to, orderNumber, url })` — provider `resend` (via fetch) atau `log` (dev). |
 | `audit.ts` | `recordAudit({ actorId, action, entity, entityId, metadata? })` → tulis `AuditLog` (best-effort). |
 
 ---
@@ -108,7 +100,7 @@ src/app/api/
 ├── niches/route.ts, niches/[slug]/route.ts
 ├── products/route.ts, products/[slug]/route.ts
 ├── checkout/route.ts
-├── orders/[orderNumber]/{status,access-link}/route.ts
+├── orders/[orderNumber]/status/route.ts
 ├── downloads/[token]/route.ts
 ├── webhooks/paddle/route.ts
 └── admin/
@@ -120,7 +112,7 @@ src/app/api/
     └── stats/route.ts 🔒
 ```
 
-Semua endpoint admin dilindungi `getAdmin` + `requireAdminSync(admin, ["admin"])`. Rate limit diterapkan pada login, checkout, status order, access-link, dan download.
+Semua endpoint admin dilindungi `getAdmin` + `requireAdminSync(admin, ["admin"])`. Rate limit diterapkan pada login, checkout, status order, dan download.
 
 ---
 
@@ -157,8 +149,8 @@ Semua endpoint admin dilindungi `getAdmin` + `requireAdminSync(admin, ["admin"])
 - **schema:** `{ productId, email? }`.
 
 ### 7.6 `orders`
-- **routes public:** `GET /:orderNumber/status` (param bisa `ORD-...` atau Paddle `txn_...`; bukti akses `access=` atau `email=`, rate-limited), `POST /:orderNumber/access-link` (rate-limited, `email` opsional → pakai email order). **admin:** `GET /`, `GET /:id`, `POST /reconcile`.
-- **service:** `getOrderStatus` (access-aware: tanpa bukti valid → `authorized:false`, `downloads:[]`; dengan bukti & `PAID` → self-heal `fulfillOrder`; tiap item menyertakan `hasFiles`), `createOrderAccessLink` (buat `AccessLink` TTL `ORDER_ACCESS_TTL_HOURS`; dipakai checkout & webhook), `requestAccessLink` (buat `AccessLink` + kirim email; `email` opsional, respons generik anti-enumerasi), `listAdminOrders` (filter status/search, paginate), `getAdminOrder`, `reconcilePaidOrders`.
+- **routes public:** `GET /:orderNumber/status` (param bisa `ORD-...` atau Paddle `txn_...`; bukti akses `access=` atau `email=`, rate-limited). **admin:** `GET /`, `GET /:id`, `POST /reconcile`.
+- **service:** `getOrderStatus` (access-aware: tanpa bukti valid → `authorized:false`, `downloads:[]`; dengan bukti & `PAID` → self-heal `fulfillOrder`; tiap item menyertakan `hasFiles`), `createOrderAccessLink` (buat `AccessLink` TTL `ORDER_ACCESS_TTL_HOURS`; dipakai checkout), `listAdminOrders` (filter status/search, paginate), `getAdminOrder`, `reconcilePaidOrders`.
 - **schema:** param orderNumber/id, query access/email, filter list (page/pageSize/status/search).
 
 ### 7.7 `downloads`
@@ -223,8 +215,7 @@ POST /api/webhooks/paddle
  → processEvent('transaction.completed')
     → validasi payload vs order
      → order PAID + Payment COMPLETED + fulfillOrder (Entitlement + DownloadToken per item)
-     → bila ada email: createOrderAccessLink + sendAccessLinkEmail (jika gagal, hanya di-log)
- → markProcessed → 200
+  → markProcessed → 200
    (gagal: markFailed + 500 → Paddle retry)
 ```
 

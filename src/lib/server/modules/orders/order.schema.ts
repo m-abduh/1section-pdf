@@ -9,10 +9,6 @@ export const orderStatusQuerySchema = z.object({
   access: z.string().min(1).optional(),
 });
 
-export const accessLinkRequestSchema = z.object({
-  email: z.string().email().optional(),
-});
-
 export const adminOrderListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),

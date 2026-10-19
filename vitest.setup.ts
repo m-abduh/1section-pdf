@@ -5,4 +5,3 @@ process.env.PADDLE_API_KEY = process.env.PADDLE_API_KEY ?? "test_paddle_key";
 process.env.PADDLE_WEBHOOK_SECRET =
   process.env.PADDLE_WEBHOOK_SECRET ?? "test_paddle_webhook_secret";
 process.env.RATE_LIMIT_DISABLED = process.env.RATE_LIMIT_DISABLED ?? "true";
-process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER ?? "log";

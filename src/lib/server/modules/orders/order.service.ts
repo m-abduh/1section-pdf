@@ -3,7 +3,6 @@ import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
 import { env } from "../../config/env";
 import { generateSecureToken } from "../../utils/ids";
-import { sendAccessLinkEmail } from "../../lib/email";
 import { fulfillOrder } from "../downloads/download.service";
 
 export interface PublicOrderItem {
@@ -150,46 +149,6 @@ export async function createOrderAccessLink(
     },
   });
   return token;
-}
-
-/**
- * Sends a magic access link. Response is always generic to avoid leaking
- * whether an order number exists.
- */
-export async function requestAccessLink(
-  orderNumber: string,
-  email?: string,
-): Promise<void> {
-  const order = await prisma.order.findUnique({ where: { orderNumber } });
-  if (!order) return;
-
-  // Prefer the email given in the request; otherwise use the email already on
-  // the order (collected at checkout / by Paddle).
-  const normalized = (email ?? order.email ?? "").toLowerCase();
-  if (!normalized) return;
-
-  if (order.email && email && order.email.toLowerCase() !== normalized) {
-    return;
-  }
-
-  if (!order.email) {
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { email: normalized },
-    });
-  }
-
-  const token = generateSecureToken(24);
-  await prisma.accessLink.create({
-    data: {
-      token,
-      orderId: order.id,
-      email: normalized,
-      expiresAt: new Date(Date.now() + env.ACCESS_LINK_TTL_MINUTES * 60 * 1000),
-    },
-  });
-
-  await sendAccessLinkEmail({ to: normalized, orderNumber, token });
 }
 
 export async function listAdminOrders(params: {

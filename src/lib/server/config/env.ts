@@ -1,4 +1,4 @@
-// dotenv not needed: Next.js loads .env.local automatically.
+// dotenv not needed: Next.js loads .env automatically.
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -7,10 +7,6 @@ const envSchema = z.object({
     .default("development"),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-
-  CLIENT_URL: z.string().url().default("http://localhost:3000"),
-  APP_URL: z.string().url().optional(),
-  ROOT_DOMAIN: z.string().default("1section.com"),
 
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
@@ -23,17 +19,12 @@ const envSchema = z.object({
   DOWNLOAD_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(72),
   DOWNLOAD_MAX_HITS: z.coerce.number().int().positive().default(5),
   DOWNLOAD_SIGNED_URL_TTL_MINUTES: z.coerce.number().int().positive().default(10),
-  ACCESS_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(60),
   ORDER_ACCESS_TTL_HOURS: z.coerce.number().int().positive().default(720),
 
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
   CLOUDINARY_FOLDER: z.string().default("1section/bundles"),
-
-  EMAIL_PROVIDER: z.enum(["resend", "log"]).default("resend"),
-  RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("1section <no-reply@1section.com>"),
 
   RATE_LIMIT_DISABLED: z
     .enum(["true", "false"])
@@ -53,9 +44,6 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const isProduction = env.NODE_ENV === "production";
-export const isTest = env.NODE_ENV === "test";
-
-export const appUrl = env.APP_URL ?? env.CLIENT_URL;
 
 export const cloudinaryConfig = {
   cloudName: env.CLOUDINARY_CLOUD_NAME,

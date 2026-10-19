@@ -57,7 +57,7 @@ Single app Next.js 16 (App Router) di root repo. Seluruh backend (Prisma, servic
     ├── components/         # ui, site, admin, theme
     ├── hooks/              # react-query wrappers + auth context
     ├── lib/
-    │   ├── server/         # Prisma, services, auth, email, paddle, cloudinary, audit, utils
+    │   ├── server/         # Prisma, services, auth, paddle, cloudinary, audit, utils
     │   └── ...             # api client, types, formatters, site config, server-api
     └── proxy.ts            # subdomain routing middleware
 ```
@@ -99,7 +99,7 @@ BuyButton → useCheckout.mutate
         → Prisma: simpan paddleTransactionId
    → 201 { orderNumber, transactionId, checkoutUrl, accessToken }
    → Paddle.js Checkout.open({ transactionId, successUrl=/checkout/success?order=...&access=... })
-   → (pembayaran) → Paddle webhook → order PAID + Payment + fulfillOrder (Entitlement + tokens) + kirim email access link
+   → (pembayaran) → Paddle webhook → order PAID + Payment + fulfillOrder (Entitlement + tokens)
    → /checkout/success poll /api/orders/:orderNumber/status?access=... (langsung terotorisasi via accessToken)
 ```
 
@@ -159,7 +159,7 @@ Di dev, Next mengizinkan host dev via `allowedDevOrigins` (`*.localhost`, `lvh.m
 | Validasi input | zod untuk body/query/params (`parseJson`/`parseQuery`/`parseParams`), + validasi env saat boot |
 | Headers | Diatur oleh Next.js/hosting (tidak ada `helmet`) |
 | CORS | Same-origin (API `/api` di host yang sama); tidak ada middleware CORS terpisah |
-| Rate limit | `rateLimit` in-memory di `next-helpers.ts` pada login, checkout, status order, access-link, download |
+| Rate limit | `rateLimit` in-memory di `next-helpers.ts` pada login, checkout, status order, download |
 | Webhook | Verifikasi `Paddle-Signature` + idempotensi `WebhookEvent` (`RECEIVED`/`PROCESSED`/`FAILED`) + validasi payload vs snapshot order |
 | Download | `Entitlement` (ACTIVE/REVOKED) + token acak 24 byte, expiry, batas kuota dengan increment atomik; Cloudinary signed URL |
 | Upload | Hanya PDF, maks 50 MB, **cek magic bytes `%PDF-`**, disimpan privat di Cloudinary |
@@ -211,7 +211,6 @@ route handler (src/app/api/**/route.ts) → service (src/lib/server/modules/**/*
                                               ├─ prisma
                                               ├─ paddle
                                               ├─ cloudinary
-                                              ├─ email
                                               ├─ downloads.service (dipakai webhook & orders)
                                               └─ paddle-catalog.service (dipakai products handler)
 
