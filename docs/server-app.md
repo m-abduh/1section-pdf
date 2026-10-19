@@ -1,26 +1,26 @@
 # Server Application — 1section
 
-> Backend kini berjalan sebagai **Next.js Route Handlers** di dalam `client/` (`client/src/app/api/*`). Tidak ada service Express terpisah. Stack: Next.js 16 + TypeScript + Prisma + Paddle SDK.
+> Backend berjalan sebagai **Next.js Route Handlers** di root repo (`src/app/api/*`). Tidak ada service Express terpisah dan tidak ada workspace. Stack: Next.js 16 + TypeScript + Prisma + Paddle SDK.
 
 ---
 
 ## 1. Entry Point & Bootstrap
 
 ### Next.js App Router
-- Entry: `client/src/app/layout.tsx` (root layout) + `client/src/proxy.ts` (middleware/subdomain routing).
-- API: `client/src/app/api/**/route.ts` (route handlers, Node runtime).
-- Bootstrap DB: Prisma Client di `client/src/lib/server/lib/prisma.ts` (singleton).
+- Entry: `src/app/layout.tsx` (root layout) + `src/proxy.ts` (middleware/subdomain routing).
+- API: `src/app/api/**/route.ts` (route handlers, Node runtime).
+- Bootstrap DB: Prisma Client di `src/lib/server/lib/prisma.ts` (singleton).
 - Graceful shutdown: ditangani platform (Vercel/Node).
 
-### Middleware (`client/src/proxy.ts`)
+### Middleware (`src/proxy.ts`)
 - Subdomain routing: niche subdomain `/` → rewrite ke `/niche/<slug>`; root `/niche/<slug>` & `/resources/<slug>` → 308 ke subdomain.
 - Admin subdomain (`admin.*`) → rewrite ke `/admin/*`.
 
 ### Lapisan kode
-Route handler (`route.ts`) → service (`*.service.ts`) → Prisma. Validasi via zod di route handler. Auth/rate-limit helper di `client/src/lib/server/next-helpers.ts`.
+Route handler (`route.ts`) → service (`*.service.ts`) → Prisma. Validasi via zod di route handler. Auth/rate-limit helper di `src/lib/server/next-helpers.ts`.
 
 ---
-## 2. Konfigurasi Env (`client/src/lib/server/config/env.ts`)
+## 2. Konfigurasi Env (`src/lib/server/config/env.ts`)
 
 Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_ORIGINS`), `isProduction`.
 
@@ -46,7 +46,7 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 | `CLOUDINARY_API_KEY` | string (opsional) | — |
 | `CLOUDINARY_API_SECRET` | string (opsional) | — |
 | `CLOUDINARY_FOLDER` | string | `1section/bundles` |
-| `EMAIL_PROVIDER` | `resend`/`log` | `log` |
+| `EMAIL_PROVIDER` | `resend`/`log` | `resend` |
 | `RESEND_API_KEY` | string (opsional) | — |
 | `EMAIL_FROM` | string | `1section <no-reply@1section.com>` |
 | `RATE_LIMIT_DISABLED` | bool (opsional) | `false` |
@@ -55,19 +55,24 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 
 ---
 
-## 3. Lapisan Helper (`client/src/lib/server/next-helpers.ts`)
+## 3. Lapisan Helper (`src/lib/server/next-helpers.ts`)
 
-### `auth.ts` — `requireAuth`
-- Ekstrak `Authorization: Bearer <token>`; tidak ada → `401`.
-- `verifyAuthToken` → set `req.admin = { id, email, name:null, role }`; gagal → `401`.
+### Auth — `getAdmin` / `requireAdminSync`
+- `getAdmin(req)`: ambil `Authorization: Bearer <token>`; `verifyAuthToken` lalu **re-validasi ke DB** (`isActive` + `tokenVersion` cocok) → `AdminCtx | null`.
+- `requireAdminSync(admin, roles?)`: `null` → `401 UNAUTHORIZED`; `roles` tidak cocok → `403 FORBIDDEN`. Role admin default `"admin"` (lowercase).
 
-### `validate.ts` — `validate({ body, query, params })`
-- `safeParse` tiap bagian; gagal → `ApiError.badRequest` dengan `error.flatten()`.
-- Menimpa `req.params` & `req.body` dengan hasil parse; `Object.assign(req.query, data)`.
+### Validasi — `parseJson` / `parseQuery` / `parseParams`
+- `parseJson(req, schema)`: `req.json()` (fallback `{}`) lalu `schema.parse` (throw `ZodError`).
+- `parseQuery(req, schema)`: kumpulkan `searchParams` → objek string → `schema.parse`.
+- `parseParams(params, schema)`: parse `params` route dinamis (mis. `{ id }`) dengan schema.
 
-### `error.ts`
-- `notFoundHandler` → `ApiError.notFound` dengan method+URL.
-- `errorHandler`: `ApiError` → status + envelope; `ZodError` → `400 VALIDATION_ERROR` + flatten; lainnya → `500 INTERNAL_ERROR` (pesan asli hanya di non-produksi).
+### Respons — `ok` / `fail`
+- `ok(data, status=200)` → `{ success:true, data }`.
+- `fail(err)`: `ApiError` → status + `{ code, message }`; `ZodError` → `400 VALIDATION_ERROR` + `issues`; lainnya → `500 INTERNAL_ERROR` (detail di-log via `console.error`).
+
+### Rate limit — `rateLimit` / `clientIp`
+- `rateLimit(key, limit, windowMs)`: limiter in-memory per-instance (Map bucket); `false` bila kuota lewat.
+- `clientIp(req)`: ambil IP dari `x-forwarded-for` / `x-real-ip`.
 
 ---
 
@@ -94,39 +99,41 @@ Validasi zod, gagal cepat saat boot. Export `env`, `corsOrigins` (split `CORS_OR
 
 ---
 
-## 6. Routing Utama (`client/src/app/api/**/route.ts`)
+## 6. Routing Utama (`src/app/api/**/route.ts`)
 
 ```
-GET  /api/health
-     /api/auth        → authRouter
-     /api/niches      → nicheRouter
-     /api/products    → productRouter
-     /api/checkout    → checkoutRouter
-     /api/orders      → orderRouter
-     /api/downloads   → downloadRouter
-     /api/admin/niches    → adminNicheRouter 🔒
-     /api/admin/products  → adminProductRouter 🔒
-     /api/admin/orders    → adminOrderRouter 🔒
-     /api/admin/uploads   → adminUploadRouter 🔒
-     /api/admin/assets    → adminAssetRouter 🔒
-     /api/admin/stats     → adminStatsRouter 🔒
-webhook terpisah: /api/webhooks/paddle
+src/app/api/
+├── health/route.ts
+├── auth/{login,logout,me}/route.ts
+├── niches/route.ts, niches/[slug]/route.ts
+├── products/route.ts, products/[slug]/route.ts
+├── checkout/route.ts
+├── orders/[orderNumber]/{status,access-link}/route.ts
+├── downloads/[token]/route.ts
+├── webhooks/paddle/route.ts
+└── admin/
+    ├── niches/{route.ts,[id]/route.ts} 🔒
+    ├── products/{route.ts,[id]/route.ts,[id]/paddle*/route.ts} 🔒
+    ├── orders/{route.ts,[id]/route.ts,reconcile/route.ts} 🔒
+    ├── uploads/route.ts 🔒
+    ├── assets/route.ts 🔒
+    └── stats/route.ts 🔒
 ```
 
-Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit diterapkan pada login, checkout, status order, access-link, dan download.
+Semua endpoint admin dilindungi `getAdmin` + `requireAdminSync(admin, ["admin"])`. Rate limit diterapkan pada login, checkout, status order, access-link, dan download.
 
 ---
 
 ## 7. Modul (pola route handler → service → schema)
 
 ### 7.1 `auth`
-- **routes:** `POST /login` (validate body, rate-limited), `GET /me` (requireAuth), `POST /logout` (requireAuth).
+- **routes:** `POST /login` (validate body, rate-limited), `GET /me` (admin), `POST /logout` (admin).
 - **service:** `login` (cari user by email lowercase, cek `isActive`, `bcrypt.compare`, sign JWT dengan `tokenVersion`), `getProfile`, `hashPassword`, `logout` (naikkan `tokenVersion` → cabut semua token).
-- **middleware:** `requireAuth` memverifikasi JWT lalu **re-validasi ke DB** (user aktif + `tokenVersion` cocok); `requireRole` untuk otorisasi peran.
+- **helper:** `getAdmin` memverifikasi JWT lalu **re-validasi ke DB** (user aktif + `tokenVersion` cocok); `requireAdminSync` untuk otorisasi peran (default role `"admin"`).
 - **schema:** `loginSchema` (email, password min 8 + huruf + angka).
 
 ### 7.2 `niches`
-- **routes public:** `GET /`, `GET /:slug`. **admin:** list/create/patch/delete (semua `requireAuth`).
+- **routes public:** `GET /`, `GET /:slug`. **admin:** list/create/patch/delete (semua `getAdmin`).
 - **service:** `listPublicNiches` (active, hitung produk aktif), `listAdminNiches`, `getNicheBySlug(slug, onlyActive=true)` + produk+files, `createNiche` (slug auto via `slugify`, cek unik), `updateNiche` (partial, termasuk `audience`/`problems`), `deleteNiche`.
 - **schema:** create/update (regex slug, hex accent, dsb.), param slug/id.
 
@@ -134,7 +141,7 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 - **routes public:** `GET /?niche=`, `GET /:slug`. **admin:** list/create/patch/delete + `paddle-sync`, `paddle` (get), `paddle-archive`.
 - **service:** `listPublicProducts(nicheSlug?)`, `listAdminProducts` (+`_count.orderItems`), `getPublicProductBySlug`, CRUD. `createProduct`/`updateProduct` menyusun `features`, `learnings`, & `files`; update `files` = replace-all. Field naratif baru (`audience`, `notFor`, `outcome`, `limitations`, `license`, `sampleUrl`, `level`) ikut divalidasi zod.
 - **response publik** memakai `publicProductSelect` → **tidak** mengekspos `paddleProductId`/`paddlePriceId`/`storageKey`/`fileUrl` (file hanya `{ id, name, sortOrder, format }`).
-- **controller:** setelah create/update → `syncProductToPaddle` (best-effort, warning bila gagal), refresh & kirim produk; aksi tulis mencatat `AuditLog`.
+- **route handler:** setelah create/update → `syncProductToPaddle` (best-effort, warning bila gagal), refresh & kirim produk; aksi tulis mencatat `AuditLog`.
 - **schema:** validasi lengkap (lihat `api-spec.md` §5).
 
 ### 7.4 `paddle` (catalog)
@@ -157,7 +164,7 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 ### 7.7 `downloads`
 - **routes:** `GET /:token` (rate-limited).
 - **service:** `fulfillOrder(orderId)` (idempotent: buat `Entitlement` per `(orderItem, file)` + `DownloadToken`), `resolveDownload(token)` (cek token/entitlement ACTIVE/expired/kuota, increment **atomik**), resolver sumber file (Cloudinary signed URL / eksternal redirect / lokal stream).
-- **controller:** redirect 302 (Cloudinary/eksternal) atau `res.download` (lokal).
+- **route handler:** `NextResponse.redirect` 302 (Cloudinary/eksternal) atau `Response` body stream (lokal) dengan header `Content-Disposition`.
 
 ### 7.8 `webhooks`
 - **routes:** `POST /paddle` (raw body + `Paddle-Signature`) → `paddle.webhooks.unmarshal`.
@@ -165,7 +172,7 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 - Lihat `docs/paddle-integration.md` §webhook.
 
 ### 7.9 `uploads`
-- **routes:** `POST /` (requireAuth) → multer `memoryStorage`, batas 50 MB, filter MIME PDF + **validasi magic bytes `%PDF-`**.
+- **routes:** `POST /` (admin) → `req.formData()`, cek `File` tipe `application/pdf`, batas 50 MB, **validasi magic bytes `%PDF-`**.
 - **service:** `uploadPrivatePdf` ke Cloudinary (`type=authenticated`) → metadata `{ provider, storageKey, resourceType, format, bytes, checksum }`; **upsert `AssetFile`** (by `storageKey`) dan respons menyertakan `assetFileId`; `503 STORAGE_NOT_CONFIGURED` bila Cloudinary belum diatur; aksi dicatat di `AuditLog`.
 
 ### 7.9a `assets`
@@ -173,13 +180,13 @@ Semua router admin dilindungi `requireAuth` + `requireRole("ADMIN")`. Rate limit
 - **service:** `listAssetFiles`, `upsertAssetFile` (update metadata + naikkan `version`).
 
 ### 7.10 `stats`
-- **routes:** `GET /` (requireAuth) → `getDashboardStats` (counts + SUM revenue + 5 order terbaru).
+- **routes:** `GET /` (admin) → `getDashboardStats` (counts + SUM revenue + 5 order terbaru).
 
 ---
 
 ## 8. Tipe
 
-Admin auth via `getAdmin(request)` / `requireAdminSync(admin)` di `client/src/lib/server/next-helpers.ts` (JWT dari `Authorization` header).
+Admin auth via `getAdmin(request)` / `requireAdminSync(admin)` di `src/lib/server/next-helpers.ts` (JWT dari `Authorization` header).
 
 ---
 
@@ -188,8 +195,8 @@ Admin auth via `getAdmin(request)` / `requireAdminSync(admin)` di `client/src/li
 ### 9.1 Membuat Produk (admin)
 ```
 POST /api/admin/products
- → validate(createProductSchema)
- → product.controller.create
+ → parseJson(createProductSchema)
+ → product route handler
     → product.service.createProduct  (assertNiche, slug, files)
     → syncProductToPaddle (best-effort)
     → getProductById → 201
@@ -198,7 +205,7 @@ POST /api/admin/products
 ### 9.2 Checkout
 ```
 POST /api/checkout
- → validate(createCheckoutSchema)
+ → parseJson(createCheckoutSchema)
  → checkout.service.createCheckout
     → find product (tolak non-aktif / tanpa priceId)
     → create Order(PENDING)+OrderItem
@@ -236,13 +243,13 @@ POST /api/webhooks/paddle
 | seed | `tsx prisma/seed.ts` |
 | reconcile | `POST /api/admin/orders/reconcile` (admin) |
 
-Root mendelegasikan ke workspace `client` (`npm run dev`, `npm run build`, dsb).
+Semua skrip dijalankan dari root (tidak ada workspace/delegasi ke `client`).
 
 ---
 
 ## 11. Catatan Teknis
 
 - PDF disimpan di **Cloudinary** (privat) dan diakses via signed URL berumur pendek — lihat `docs/operations.md` §8.
-- Webhook di-mount **sebelum** `express.json` agar `req.body` tetap `Buffer` untuk verifikasi signature.
-- Test (Vitest + Supertest) ada di `src/**/*.test.ts`; `tsconfig.json` mengecualikan test dari build.
-- `tsconfig` server: `target ES2022`, `module CommonJS`, `strict`, `noUncheckedIndexedAccess`, `outDir dist`.
+- Webhook membaca raw body via `await req.text()` (bukan `req.json()`) agar verifikasi `Paddle-Signature` valid.
+- Test (Vitest) ada di `src/**/*.test.ts` (mis. `webhook.logic.test.ts`), dijalankan lewat `npm test`.
+- `tsconfig`: Next.js (`module: esnext`, `moduleResolution: bundler`, `noEmit: true`, `strict`), alias `@/*` → `./src/*`.

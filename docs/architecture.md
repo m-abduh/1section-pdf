@@ -38,30 +38,28 @@
 
 ## 2. Struktur Repository
 
-Single app Next.js 16 (App Router) di `client/`. Seluruh backend (Prisma, service, route handlers) berada di dalam `client/`. Tidak ada service terpisah.
+Single app Next.js 16 (App Router) di root repo. Seluruh backend (Prisma, service, route handlers) berada di dalam `src/`. Tidak ada service terpisah, tidak ada workspace.
 
 ```
 1section/
-├── package.json            # single workspace: client
+├── package.json            # app package (tanpa workspaces)
 ├── package-lock.json
 ├── prd.md
 ├── docs/
 ├── .gitignore
-│
-└── client/                 # Next.js 16 App Router (full-stack)
-    ├── next.config.ts
-    ├── tsconfig.json
-    ├── prisma/             # schema.prisma, seed.ts, migrations/
-    ├── .env / .env.example
-    └── src/
-        ├── app/            # routes (RSC + client pages) + api/* route handlers
-        ├── components/     # ui, site, admin, theme
-        ├── hooks/          # react-query wrappers + auth context
-        ├── lib/
-        │   ├── server/     # Prisma, services, auth, email, paddle, cloudinary, audit, utils
-        │   └── ...         # api client, types, formatters, site config, server-api
-        └── proxy.ts        # subdomain routing middleware
-
+├── next.config.ts
+├── tsconfig.json
+├── vitest.config.ts
+├── prisma/                 # schema.prisma, seed.ts, migrations/
+├── .env / .env.example
+└── src/
+    ├── app/                # routes (RSC + client pages) + api/* route handlers
+    ├── components/         # ui, site, admin, theme
+    ├── hooks/              # react-query wrappers + auth context
+    ├── lib/
+    │   ├── server/         # Prisma, services, auth, email, paddle, cloudinary, audit, utils
+    │   └── ...             # api client, types, formatters, site config, server-api
+    └── proxy.ts            # subdomain routing middleware
 ```
 
 ## 3. Lapisan Aplikasi
@@ -76,7 +74,7 @@ Single app Next.js 16 (App Router) di `client/`. Seluruh backend (Prisma, servic
 Pola berlapis: `src/app/api/**/route.ts` (HTTP I/O) → `src/lib/server/modules/*/*.service.ts` (logika bisnis + Prisma) → `*.schema.ts` (zod). Tidak ada ORM call langsung di route handler. Middleware auth/rate-limit/validation di `src/lib/server/next-helpers.ts`.
 
 ### 3.3 Database
-PostgreSQL via Prisma. Single source of truth schema: `client/prisma/schema.prisma`. Lihat `docs/data-model.md`.
+PostgreSQL via Prisma. Single source of truth schema: `prisma/schema.prisma`. Lihat `docs/data-model.md`.
 
 ### 3.4 File Storage
 PDF disimpan di **Cloudinary** sebagai aset privat (`type: authenticated`). Saat pembeli mengunduh, server membangun **signed URL** berumur pendek lalu redirect 302. Metadata storage disimpan pada `ProductFile` (`storageKey`, `resourceType`, `format`, `bytes`, `checksum`, `provider`). Provider `EXTERNAL`/`LOCAL` (dengan `fileUrl`) tetap didukung untuk kompatibilitas. Lihat `docs/operations.md` §8.
@@ -95,7 +93,7 @@ Browser → Next (RSC) → service langsung (Prisma) → PostgreSQL → JSON
 ```
 BuyButton → useCheckout.mutate
   → POST /api/checkout (Axios)
-     → checkout.controller → checkout.service
+     → route handler → checkout.service
         → Prisma: create Order(PENDING) + OrderItem
         → Paddle: transactions.create(customData{orderId,...})
         → Prisma: simpan paddleTransactionId
@@ -119,14 +117,14 @@ Paddle → POST /api/webhooks/paddle (raw body + signature)
 ```
 Link → GET /api/downloads/:token
   → fulfill/cek token, expiry, kuota (increment atomik via updateMany)
-  → Cloudinary: signed URL + redirect 302; lokal: res.download; eksternal: redirect 302
+  → Cloudinary: signed URL + redirect 302; lokal: Response stream; eksternal: redirect 302
 ```
 
 ---
 
 ## 5. Routing Multi-Subdomain
 
-Implementasi: `client/src/proxy.ts` (helper `proxy` + `config.matcher`).
+Implementasi: `src/proxy.ts` (helper `proxy` + `config.matcher`).
 
 Matcher mengecualikan `api`, `_next/static`, `_next/image`, `favicon.ico`, dan semua path ber-ekstensi file.
 
@@ -157,11 +155,11 @@ Di dev, Next mengizinkan host dev via `allowedDevOrigins` (`*.localhost`, `lvh.m
 | --- | --- |
 | Password admin | bcryptjs (cost 10) + kebijakan minimal (8 char, huruf + angka) |
 | Sesi | JWT HS256, expiry default `7d`; `AdminUser.tokenVersion` memungkinkan **logout/revoke** (setiap request re-validasi ke DB) |
-| Middleware auth | `requireAuth` (Bearer, re-validasi user + tokenVersion) & `requireRole` |
-| Validasi input | zod untuk body/query/params (`validate`), + validasi env saat boot |
-| Headers | `helmet` (dengan `crossOriginResourcePolicy: cross-origin`) |
-| CORS | Whitelist + izinkan root domain & seluruh subdomain; izinkan localhost saat dev |
-| Rate limit | `express-rate-limit` pada login, checkout, status order, access-link, download |
+| Middleware auth | `getAdmin(req)` (Bearer, re-validasi user aktif + tokenVersion) & `requireAdminSync(admin, roles)` |
+| Validasi input | zod untuk body/query/params (`parseJson`/`parseQuery`/`parseParams`), + validasi env saat boot |
+| Headers | Diatur oleh Next.js/hosting (tidak ada `helmet`) |
+| CORS | Same-origin (API `/api` di host yang sama); tidak ada middleware CORS terpisah |
+| Rate limit | `rateLimit` in-memory di `next-helpers.ts` pada login, checkout, status order, access-link, download |
 | Webhook | Verifikasi `Paddle-Signature` + idempotensi `WebhookEvent` (`RECEIVED`/`PROCESSED`/`FAILED`) + validasi payload vs snapshot order |
 | Download | `Entitlement` (ACTIVE/REVOKED) + token acak 24 byte, expiry, batas kuota dengan increment atomik; Cloudinary signed URL |
 | Upload | Hanya PDF, maks 50 MB, **cek magic bytes `%PDF-`**, disimpan privat di Cloudinary |
@@ -175,15 +173,14 @@ Catatan: rate limiting in-memory (per-instance); untuk multi-instance produksi g
 
 ## 7. Konfigurasi & Bootstrapping
 
-- **Server boot:** `config/env.ts` memvalidasi env dengan zod (gagal cepat jika kurang). `index.ts` membuat app, listen, dan menangani `SIGINT`/`SIGTERM` (tutup server + disconnect Prisma).
-- **Middleware global berurutan** (`app.ts`):
-  1. `helmet`
-  2. `cors`
-  3. `morgan` (combined di prod, dev di dev)
-  4. `/api/webhooks` → `express.raw({ type: "application/json" })` + `webhookRouter` (**sebelum** JSON parser)
-  5. `express.json({ limit: "2mb" })` + `urlencoded`
-  6. `/api` → `apiRouter`
-  7. `notFoundHandler` lalu `errorHandler`
+- **Env:** `src/lib/server/config/env.ts` memvalidasi env dengan zod **saat modul di-import** (gagal cepat jika kurang). Tidak ada `dotenv` — Next.js memuat `.env`/`.env.local` otomatis.
+- **Tidak ada bootstrap manual:** tidak ada `index.ts`/`app.ts`/`listen`; route handler dijalankan oleh runtime Next.js (dev `next dev`, prod hosting Next/Node).
+- **Route handler:** tiap `src/app/api/**/route.ts` mengekspor `GET`/`POST`/`PATCH`/`DELETE`, memakai helper di `next-helpers.ts`:
+  - `getAdmin(req)` + `requireAdminSync(admin, roles)` → auth admin.
+  - `parseJson(req, schema)` / `parseQuery(req, schema)` / `parseParams(params, schema)` → validasi zod.
+  - `ok(data, status)` / `fail(err)` → envelope respons; `fail` memetakan `ApiError` & `ZodError`.
+  - `rateLimit(key, limit, windowMs)` → rate limit in-memory per-instance.
+- **Raw body webhook:** route `webhooks/paddle` membaca `await req.text()` untuk verifikasi `Paddle-Signature` — tidak ada global JSON parser yang perlu di-bypass.
 - **Client boot:** `app/layout.tsx` menyuntikkan `themeScript` anti-flash, lalu `Providers` (Theme → QueryClient → Auth).
 
 ---
@@ -191,8 +188,8 @@ Catatan: rate limiting in-memory (per-instance); untuk multi-instance produksi g
 ## 8. Tipe & Kontrak
 
 - **Envelope response konsisten:** `{ success, data, pagination? }` / `{ success:false, error:{ code, message, details? } }`.
-- **Tipe client** diduplikasi manual di `client/src/lib/types.ts` (belum ada shared package / codegen dari Prisma).
-- **Admin auth** via `getAdmin(request)` / `requireAdminSync(admin)` di `client/src/lib/server/next-helpers.ts` (JWT dari `Authorization` header).
+- **Tipe client** diduplikasi manual di `src/lib/types.ts` (belum ada shared package / codegen dari Prisma).
+- **Admin auth** via `getAdmin(request)` / `requireAdminSync(admin)` di `src/lib/server/next-helpers.ts` (JWT dari `Authorization` header).
 
 ---
 
@@ -206,14 +203,20 @@ Catatan: rate limiting in-memory (per-instance); untuk multi-instance produksi g
 
 ---
 
-## 10. Diagram Dependency (server)
+## 10. Diagram Dependency (route handler)
 
 ```
-routes → controller → service → { prisma, paddle }
-                          │
-                          ├─ downloads.service (dipakai webhook & orders)
-                          └─ paddle-catalog.service (dipakai products.controller)
-middlewares: auth(requireAuth) → lib/jwt
-             validate → utils/api-error (ApiError)
-             error → ApiError + ZodError
+route handler (src/app/api/**/route.ts) → service (src/lib/server/modules/**/*.service.ts)
+                                              │
+                                              ├─ prisma
+                                              ├─ paddle
+                                              ├─ cloudinary
+                                              ├─ email
+                                              ├─ downloads.service (dipakai webhook & orders)
+                                              └─ paddle-catalog.service (dipakai products handler)
+
+next-helpers: getAdmin → lib/jwt
+              requireAdminSync → utils/api-error (ApiError)
+              parseJson/parseQuery/parseParams → zod
+              ok/fail → ApiError + ZodError
 ```

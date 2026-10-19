@@ -9,27 +9,27 @@
 - **Node.js >= 20** (lihat `engines` di root `package.json`).
 - **PostgreSQL** (lokal atau terkelola).
 - **Akun Paddle** (sandbox untuk dev, production untuk rilis) + akses dashboard.
-- npm (workspaces).
+- npm.
 
 ---
 
 ## 2. Instalasi
 
 ```bash
-npm install            # dari root (single workspace: client)
+npm install            # dari root
 ```
 
-Struktur: single app Next.js di `client/`. Seluruh backend (Prisma, service, route handlers) berada di dalam `client/`.
+Struktur: single app Next.js di root repo. Seluruh backend (Prisma, service, route handlers) berada di dalam `src/`.
 
 ---
 
 ## 3. Environment
 ```bash
-cp client/.env.example client/.env
-cp client/.env.example client/.env.local
+cp .env.example .env
+cp .env.example .env.local
 ```
 
-### `client/.env` (dan `.env.local`)
+### `.env` (dan `.env.local`)
 | Var | Keterangan |
 | --- | --- |
 | `NODE_ENV` | `development` / `production` |
@@ -79,7 +79,7 @@ Produksi:
 npm run prisma:deploy       # apply migration yang sudah ada
 ```
 
-Migration yang ada (urut): `init` → `add_paddle_product_id` → `product_files_bundle` → `hardening_entities`. Lihat `docs/data-model.md` §4.
+Migration yang ada (urut): `init` → `add_paddle_product_id` → `product_files_bundle` → `hardening_entities` → `learning_platform_models` → `drop_niche_featured` → `access_link_email_optional`. Lihat `docs/data-model.md` §4.
 
 ---
 
@@ -113,8 +113,8 @@ npm run typecheck      # tsc --noEmit
 | `npm run build` | next build |
 | `npm run typecheck` | tsc --noEmit |
 | `npm run lint` | ESLint (root) |
-| `npm test` | (belum ada test client) |
-| `npm run prisma:generate` / `prisma:migrate` / `prisma:deploy` | Prisma (di client/) |
+| `npm test` | Vitest (unit test, mis. `webhook.logic.test.ts`) |
+| `npm run prisma:generate` / `prisma:migrate` / `prisma:deploy` | Prisma |
 | `npm run db:seed` | seed |
 
 
@@ -127,9 +127,9 @@ Agar `finance.1section.com`, `admin.1section.com`, dsb. bekerja:
 2. Tambahkan **wildcard DNS** `*.<domain>` → layanan web (untuk semua subdomain niche).
 3. Konfigurasi TLS wildcard di host/reverse proxy.
 4. Set `NEXT_PUBLIC_ROOT_DOMAIN=1section.com` dan `NEXT_PUBLIC_USE_SUBDOMAINS=true`.
-5. Set `CORS_ORIGINS` & `ROOT_DOMAIN` di server; server otomatis mengizinkan `*.ROOT_DOMAIN`.
+5. Set `ROOT_DOMAIN` (server) sesuai domain produksi.
 
-Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.com`); set `NEXT_PUBLIC_API_URL` sesuai.
+API bersifat **same-origin** (`/api` di host yang sama) — biarkan `NEXT_PUBLIC_API_URL` kosong. Isi `NEXT_PUBLIC_API_URL` hanya bila API dipisah ke host lain (mis. `api.1section.com`).
 
 ---
 
@@ -146,10 +146,10 @@ Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.
 
 ## 9. Deployment (pola umum)
 
-1. **Database:** sediakan PostgreSQL terkelola; jalankan `prisma migrate deploy`.
-2. **Server API:** deploy `server` (build `tsc` → `dist`, start `node dist/index.js`), set env produksi (termasuk kredensial Cloudinary & email). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
-3. **Client:** deploy `client` ke hosting Next.js; set `NEXT_PUBLIC_*` (di-bake saat build) dan wildcard domain.
-4. **Webhook:** daftarkan URL publik `https://<api-host>/api/webhooks/paddle` di Paddle, subscribe event, simpan secret.
+1. **Database:** sediakan PostgreSQL terkelola; untuk hosting serverless gunakan koneksi **pooled** (pgbouncer/Prisma Accelerate); jalankan `prisma migrate deploy`.
+2. **App:** deploy satu layanan Next.js (root repo) ke hosting Next.js/Node (mis. Vercel, Netlify, VPS). Set seluruh env produksi (`DATABASE_URL`, `JWT_SECRET`, Paddle, Cloudinary, email). Tidak perlu disk persisten untuk PDF (berada di Cloudinary).
+3. **Build-time:** `NEXT_PUBLIC_*` di-*inline* saat build → set sebelum `next build`.
+4. **Webhook:** daftarkan URL publik `https://<host>/api/webhooks/paddle` di Paddle, subscribe event, simpan secret.
 5. **Seed admin** sekali (atau buat admin manual) dan ganti password default.
 6. Verifikasi end-to-end di sandbox sebelum production.
 
@@ -158,7 +158,7 @@ Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.
 ## 10. Healthcheck & Monitoring
 
 - API: `GET /api/health` → `{ status: "ok", time }`.
-- Log: `morgan` (combined di produksi).
+- Log: stdout platform/hosting (tanpa `morgan`) — gunakan log Next.js/hosting untuk melihat error & request.
 - Perhatikan tabel `webhook_events`: `status = FAILED` (retry) atau `attempts` naik → ada masalah fulfillment. `status = RECEIVED` lama → proses menggantung.
 - Jalankan **reconciliation** berkala: `POST /api/admin/orders/reconcile` (admin) untuk menerbitkan entitlement yang bolong pada order `PAID`.
 - Pantau `orders` status `PENDING` yang menggantung (indikasi webhook bermasalah).
@@ -174,7 +174,7 @@ Endpoint API sebaiknya berada di host yang dijangkau client (mis. `api.1section.
 - [ ] Provider email aktif (`RESEND_API_KEY` + `EMAIL_FROM`, domain terverifikasi SPF/DKIM).
 - [ ] `APP_URL` menunjuk domain publik (untuk tautan magic-link).
 - [ ] `NEXT_PUBLIC_USE_SUBDOMAINS=true` + wildcard DNS + TLS.
-- [ ] `CORS_ORIGINS`/`ROOT_DOMAIN` benar.
+- [ ] `ROOT_DOMAIN` benar.
 - [ ] Migration ter-apply (`prisma migrate deploy`).
 - [ ] Password admin default diganti (kebijakan min 8 char + huruf + angka).
 - [ ] Webhook terdaftar & terverifikasi.

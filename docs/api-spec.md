@@ -1,6 +1,6 @@
 # API Specification — 1section
 
-> Referensi REST API. Backend diimplementasikan sebagai **Next.js Route Handlers** di `client/src/app/api/**/route.ts`. Base URL default: same-origin (`/api`); dev `http://localhost:3000`. Semua endpoint API berada di prefix **`/api`**. Response selalu JSON dengan envelope konsisten.
+> Referensi REST API. Backend diimplementasikan sebagai **Next.js Route Handlers** di `src/app/api/**/route.ts`. Base URL default: same-origin (`/api`); dev `http://localhost:3000`. Semua endpoint API berada di prefix **`/api`**. Response selalu JSON dengan envelope konsisten.
 
 ---
 
@@ -24,7 +24,7 @@ Untuk endpoint list ber-paginasi ditambah:
 | --- | --- | --- |
 | `BAD_REQUEST` | 400 | `ApiError.badRequest`, validasi params/query/body |
 | `VALIDATION_ERROR` | 400 | `ZodError` tak tertangani |
-| `UNAUTHORIZED` | 401 | `requireAuth`, login gagal |
+| `UNAUTHORIZED` | 401 | `requireAdminSync`, login gagal |
 | `FORBIDDEN` | 403 | akses ditolak (mis. email tidak cocok, kuota habis, path traversal) |
 | `NOT_FOUND` | 404 | resource/route tidak ada |
 | `CONFLICT` | 409 | slug duplikat |
@@ -310,7 +310,7 @@ Mengunduh file. **Rate-limited** (60/menit/IP).
 - Kuota dinaikkan **atomik** (`updateMany` dengan `downloadCount < maxDownloads`); bila gagal → `403`.
 - Sumber file:
   - `provider=CLOUDINARY` → server membangun **signed URL** (`DOWNLOAD_SIGNED_URL_TTL_MINUTES`) lalu **302 redirect**.
-  - `fileUrl` absolut (`http(s)://`) → **302 redirect**; lokal (`/uploads/...`) → `res.download(filePath, fileName)`.
+  - `fileUrl` absolut (`http(s)://`) → **302 redirect** (`NextResponse.redirect`); lokal (`/uploads/...`) → `Response` body stream dengan header `Content-Disposition: attachment`.
 
 Nama file: label + ekstensi `.pdf` bila belum ada, disanitasi (`[^a-zA-Z0-9._-]` → `-`).
 
@@ -370,7 +370,7 @@ Agregat dashboard.
 
 ### `POST /api/webhooks/paddle`
 Bukan endpoint publik biasa — dipanggil Paddle.
-- `Content-Type: application/json`, **raw body** (dipasang `express.raw` sebelum JSON parser).
+- `Content-Type: application/json`, **raw body** dibaca via `await req.text()` (bukan `req.json()`) agar signature valid.
 - Header wajib **`Paddle-Signature`**; diverifikasi `paddle.webhooks.unmarshal(rawBody, secret, signature)`.
 
 **Perilaku:**

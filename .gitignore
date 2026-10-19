@@ -9,6 +9,9 @@ build/
 .next/
 out/
 
+# next
+next-env.d.ts
+
 # env
 .env
 .env.local
@@ -16,12 +19,12 @@ out/
 !.env.example
 
 # prisma
-client/prisma/*.db
-client/prisma/*.db-journal
+prisma/*.db
+prisma/*.db-journal
 
 # uploads
-client/uploads/*
-!client/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
 
 # logs
 *.log

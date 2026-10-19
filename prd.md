@@ -225,7 +225,7 @@ Detail: [`docs/data-model.md`](docs/data-model.md).
 
 ## 10. Arsitektur (ringkas)
 
-Single app Next.js 16 (App Router, RSC+ISR) di `client/`, backend via **route handlers** + **Prisma** + **Paddle SDK** + **PostgreSQL**. Routing subdomain via middleware Next. Webhook Paddle memicu fulfillment. Detail: [`docs/architecture.md`](docs/architecture.md).
+Single app Next.js 16 (App Router, RSC+ISR) di root repo, backend via **route handlers** + **Prisma** + **Paddle SDK** + **PostgreSQL**. Routing subdomain via middleware Next. Webhook Paddle memicu fulfillment. Detail: [`docs/architecture.md`](docs/architecture.md).
 
 ---
 

@@ -1,6 +1,6 @@
 # Design System — 1section
 
-> Sistem desain aktual yang dipakai di `client/`. Semua nilai diambil langsung dari `client/src/app/globals.css`, komponen `client/src/components/ui/*`, dan pola yang dipakai di halaman. Tema: **monokrom editorial** (hitam/putih/abu) dengan aksen kontras, gaya "cinematic" (grid, spotlight, noise, teks gradien).
+> Sistem desain aktual yang dipakai di app. Semua nilai diambil langsung dari `src/app/globals.css`, komponen `src/components/ui/*`, dan pola yang dipakai di halaman. Tema: **monokrom editorial** (hitam/putih/abu) dengan aksen kontras, gaya "cinematic" (grid, spotlight, noise, teks gradien).
 
 ---
 
@@ -62,7 +62,7 @@ Didefinisikan di `:root` (light) dan `.dark`, lalu diekspos ke Tailwind v4 lewat
 
 ## 3. Mode Gelap (Theming)
 
-- Implementasi: `client/src/components/theme-provider.tsx`.
+- Implementasi: `src/components/theme-provider.tsx`.
 - Variabel `dark` class via `@custom-variant dark (&:where(.dark, .dark *))`.
 - Simpan preferensi di `localStorage` key **`section-theme`**.
 - Nilai awal: dari localStorage, kalau tidak ada ikut `prefers-color-scheme`.
@@ -92,7 +92,7 @@ Aksesibilitas gerak: `@media (prefers-reduced-motion: reduce)` mematikan ketiga 
 
 ---
 
-## 5. Komponen UI (primitives) — `client/src/components/ui/`
+## 5. Komponen UI (primitives) — `src/components/ui/`
 
 ### `Button` (`button.tsx`)
 - `forwardRef<HTMLButtonElement>`, meneruskan seluruh props native.
@@ -114,7 +114,7 @@ Aksesibilitas gerak: `@media (prefers-reduced-motion: reduce)` mematikan ketiga 
 
 ---
 
-## 6. Komponen Storefront — `client/src/components/site/`
+## 6. Komponen Storefront — `src/components/site/`
 
 | Komponen | Fungsi & catatan visual |
 | --- | --- |
@@ -128,7 +128,7 @@ Aksesibilitas gerak: `@media (prefers-reduced-motion: reduce)` mematikan ketiga 
 
 ---
 
-## 7. Komponen Admin — `client/src/components/admin/`
+## 7. Komponen Admin — `src/components/admin/`
 
 | Komponen | Fungsi & catatan visual |
 | --- | --- |

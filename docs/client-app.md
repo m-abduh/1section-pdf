@@ -1,6 +1,6 @@
 # Client Application — 1section
 
-> Dokumentasi detail `client/`: framework, struktur folder, routing, halaman, komponen, hooks, lib, state management, dan rendering strategy.
+> Dokumentasi detail app: framework, struktur folder, routing, halaman, komponen, hooks, lib, state management, dan rendering strategy.
 
 ---
 
@@ -35,7 +35,7 @@
 
 ---
 
-## 2. Struktur Folder `client/src`
+## 2. Struktur Folder `src`
 
 ```
 src/
@@ -238,6 +238,6 @@ Lihat `docs/design-system.md` §3 (ThemeProvider + themeScript + ThemeToggle).
 
 ## 10. Catatan Kualitas
 
-- `ResourceCard` memakai `<img>` (bukan `next/image`) — cover ditampilkan tanpa optimasi.
+- Kartu bundle (`BundleCard`) tidak memuat gambar; storefront menghindari `next/image` untuk saat ini.
 - Halaman admin tidak memiliki proteksi server-side; hanya `AuthGuard` di client (data tetap dijaga API via JWT).
 - Seluruh copy storefront kini **English native** (brand `1section`); hint admin juga sudah di-Inggriskan.

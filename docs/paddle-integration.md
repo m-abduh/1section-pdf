@@ -12,8 +12,8 @@
 - **Konfirmasi:** webhook `transaction.completed` memicu pemberian akses unduh.
 
 Komponen kode:
-- Server SDK: `client/src/lib/server/lib/paddle.ts`, `client/src/lib/server/modules/paddle/paddle-catalog.service.ts`, `checkout.service.ts`, `webhooks/*`.
-- Client SDK: `client/src/lib/paddle.ts` + `hooks/use-checkout.ts`.
+- Server SDK: `src/lib/server/lib/paddle.ts`, `src/lib/server/modules/paddle/paddle-catalog.service.ts`, `checkout.service.ts`, `webhooks/*`.
+- Client SDK: `src/lib/paddle.ts` + `hooks/use-checkout.ts`.
 
 ---
 
