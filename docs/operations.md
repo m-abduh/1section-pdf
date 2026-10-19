@@ -157,6 +157,8 @@ Next.js 16 didukung Netlify via OpenNext dengan **zero-config** (plugin terpasan
 - **Migrasi:** jalankan `prisma migrate deploy` dari lokal terhadap `DATABASE_URL` produksi (sekali per rilis). Jangan taruh di build agar tidak balapan antar-deploy.
 - **Seed admin:** jalankan `npm run db:seed` dari lokal ke DB produksi, lalu ganti password default.
 - **Rate limit in-memory** (`next-helpers.ts`) tidak persisten antar-invocation Lambda — fungsional tapi tidak akurat; pindah ke store eksternal (mis. Upstash Redis) bila butuh ketat.
+- **Build settings:** `netlify.toml` menetapkan `publish = ".next"`. Pastikan override lama di UI (*Base directory* / *Publish directory*, mis. `client/.next`) **dihapus** agar tidak menimpa.
+- **Secrets scanning:** Netlify menolak build bila nilai env var ditemukan di repo. `netlify.toml` menyetel `SECRETS_SCAN_OMIT_KEYS` untuk nilai non-secret (`NEXT_PUBLIC_ROOT_DOMAIN`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_FOLDER`, `ADMIN_EMAIL`, `ADMIN_NAME`). **`JWT_SECRET` sengaja tidak di-omit** — nilainya wajib unik/kuat; bila scanner menemukannya, berarti masih memakai placeholder dan harus diganti.
 
 #### Subdomain per niche di Netlify (tanpa wildcard, plan Free/Starter)
 

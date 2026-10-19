@@ -1,8 +1,12 @@
 [build]
   command = "next build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
+  # Non-secret config values that also appear in the repo/docs. Without this,
+  # Netlify's secret scanner flags them as leaked secrets and fails the build.
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_ROOT_DOMAIN,CLOUDINARY_CLOUD_NAME,CLOUDINARY_FOLDER,ADMIN_EMAIL,ADMIN_NAME"
 
 # The Next.js Runtime is installed automatically by Netlify. Do not add
 # @netlify/plugin-nextjs to package.json unless you intend to pin a version.
