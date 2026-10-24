@@ -18,11 +18,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const niche = await getNiche(slug);
   if (!niche) {
-    return { title: "Area not found" };
+    return { title: "Problem area not found" };
   }
   return {
-    title: `${niche.name} — guides`,
-    description: niche.tagline ?? niche.description ?? undefined,
+    title: `${niche.name} — understand the problem`,
+    description:
+      niche.tagline ??
+      niche.description ??
+      `Explore real-life problems in ${niche.name} through focused, practical understanding.`,
   };
 }
 
@@ -70,7 +73,8 @@ export default async function NichePage({ params }: NichePageProps) {
                 className="animate-fade-up mt-7 max-w-2xl text-balance text-4xl font-extrabold tracking-tight text-gradient sm:text-6xl sm:leading-[1.05]"
                 style={{ animationDelay: "80ms" }}
               >
-                {niche.tagline ?? `Practical guides for ${niche.name}`}
+                {niche.tagline ??
+                  `Understand the real-life problems within ${niche.name}.`}
               </h1>
 
               {niche.description ? (
@@ -87,7 +91,9 @@ export default async function NichePage({ params }: NichePageProps) {
                   className="animate-fade-up mt-6 max-w-xl rounded-2xl border border-border bg-card/70 p-4 text-sm text-fg-muted backdrop-blur"
                   style={{ animationDelay: "220ms" }}
                 >
-                  <span className="font-semibold text-fg">Who this is for: </span>
+                  <span className="font-semibold text-fg">
+                    This area speaks to:{" "}
+                  </span>
                   {niche.audience}
                 </p>
               ) : null}
@@ -100,12 +106,12 @@ export default async function NichePage({ params }: NichePageProps) {
                   href="#guides"
                   className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90"
                 >
-                  Browse the guides
+                  Explore the problem guides
                   <span aria-hidden>↓</span>
                 </a>
                 <span className="text-sm text-fg-muted">
-                  {niche.products.length} guide
-                  {niche.products.length === 1 ? "" : "s"} · one-time payment
+                  {niche.products.length} focused guide
+                  {niche.products.length === 1 ? "" : "s"} · one-time purchase
                 </span>
                 <SocialLinks slug={niche.slug} />
               </div>
@@ -118,7 +124,7 @@ export default async function NichePage({ params }: NichePageProps) {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-                    What these guides help with
+                    Situations we explore
                   </span>
                   <span
                     className="size-2 rounded-full"
@@ -132,10 +138,10 @@ export default async function NichePage({ params }: NichePageProps) {
                       className="flex items-start gap-3 text-sm text-fg-muted"
                     >
                       <span
-                        className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white"
+                        aria-hidden
+                        className="mt-1.5 size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: niche.accentColor }}
                       >
-                        ✓
                       </span>
                       <span>{problem}</span>
                     </li>
@@ -149,16 +155,17 @@ export default async function NichePage({ params }: NichePageProps) {
         <section id="guides" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="max-w-2xl">
             <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-              {niche.name} guides
+              {niche.name}: focused problem guides
             </h2>
             <p className="mt-2 text-sm text-fg-muted">
-              One-time purchase. Access is delivered immediately after payment.
+              Each guide examines a specific problem in depth. Pay once and get
+              access after your purchase is confirmed.
             </p>
           </div>
 
           {niche.products.length === 0 ? (
             <p className="mt-8 rounded-2xl border border-border bg-surface-muted p-8 text-center text-sm text-fg-muted">
-              No guides available in this area yet.
+              No guides are available in this problem area yet.
             </p>
           ) : (
             <div className="mt-10 grid gap-6 md:grid-cols-2">

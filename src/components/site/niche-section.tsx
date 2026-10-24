@@ -25,7 +25,7 @@ export function NicheSection({
               style={{ backgroundColor: niche.accentColor }}
             />
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted">
-              Area {String(index + 1).padStart(2, "0")}
+              PROBLEM AREA {String(index + 1).padStart(2, "0")}
             </span>
           </div>
 
@@ -33,7 +33,8 @@ export function NicheSection({
             {niche.name}
           </h3>
           <p className="mt-4 text-lg text-fg-muted">
-            {niche.tagline ?? `Practical guides for ${niche.name}`}
+            {niche.tagline ??
+              `Understand the real-life problems within ${niche.name}.`}
           </p>
 
           {niche.description ? (
@@ -44,28 +45,28 @@ export function NicheSection({
 
           {niche.audience ? (
             <p className="mt-5 rounded-2xl border border-border bg-card p-4 text-sm text-fg-muted">
-              <span className="font-semibold text-fg">Who this is for: </span>
+              <span className="font-semibold text-fg">This area speaks to: </span>
               {niche.audience}
             </p>
           ) : null}
 
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                href={nicheUrl(niche.slug)}
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90"
-              >
-                Explore {count} guide{count === 1 ? "" : "s"}
-                <span aria-hidden>→</span>
-              </Link>
-              <SocialLinks slug={niche.slug} />
-            </div>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link
+              href={nicheUrl(niche.slug)}
+              className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90"
+            >
+              Explore {count} focused guide{count === 1 ? "" : "s"}
+              <span aria-hidden>→</span>
+            </Link>
+            <SocialLinks slug={niche.slug} />
           </div>
+        </div>
 
         <div className={reversed ? "lg:order-1" : ""}>
           {problems.length > 0 ? (
             <div className="rounded-3xl border border-border bg-surface-muted p-6 sm:p-8">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-fg-muted">
-                Problems covered here
+                Situations worth understanding
               </h4>
               <ul className="mt-5 space-y-4">
                 {problems.map((problem) => (

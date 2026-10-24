@@ -66,7 +66,9 @@ export function ProductCard({
 
       <h3 className="mt-5 text-lg font-semibold text-fg">{product.name}</h3>
       <p className="mt-2 flex-1 text-sm text-fg-muted">
-        {product.outcome ?? product.summary ?? "A practical learning guide."}
+        {product.outcome ??
+          product.summary ??
+          "A focused guide to understanding a real-life problem."}
       </p>
 
       {learnings.length > 0 ? (
