@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import querystring from "node:querystring";
 import { v2 as cloudinary } from "cloudinary";
 import { cloudinaryConfig, hasCloudinary, env } from "../config/env";
 import { ApiError } from "../utils/api-error";
@@ -94,14 +95,26 @@ export function buildSignedDownloadUrl(
   storageKey: string,
   resourceType = "image",
   format = "pdf",
+  fileName?: string,
 ): string {
   ensureConfigured();
-  const expiresAt = Math.floor(
-    Date.now() / 1000 + env.DOWNLOAD_SIGNED_URL_TTL_MINUTES * 60,
-  );
-  return cloudinary.utils.private_download_url(storageKey, format, {
-    resource_type: resourceType,
+  const params = cloudinary.utils.sign_request({
+    timestamp: Math.floor(Date.now() / 1000),
+    public_id: storageKey,
+    format,
     type: "authenticated",
-    expires_at: expiresAt,
+    expires_at: Math.floor(
+      Date.now() / 1000 + env.DOWNLOAD_SIGNED_URL_TTL_MINUTES * 60,
+    ),
+    // Force `Content-Disposition: attachment` so the browser downloads the
+    // file instead of opening it inline (which would expose the signed URL).
+    attachment: true,
+    // Cloudinary only accepts a custom download name via `target_filename`;
+    // it must be part of the signed payload.
+    ...(fileName ? { target_filename: fileName } : {}),
   });
+  const base = cloudinary.utils.api_url("download", {
+    resource_type: resourceType,
+  });
+  return `${base}?${querystring.stringify(params)}`;
 }

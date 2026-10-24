@@ -117,7 +117,7 @@ export async function resolveDownload(token: string): Promise<ResolvedDownload> 
     throw ApiError.forbidden("Download limit reached for this link");
   }
 
-  const fileName = sanitizeFileName(ensurePdfExtension(record.label));
+  const fileName = buildDownloadFileName(record.label);
   const file = record.file;
 
   if (file?.provider === "CLOUDINARY" && file.storageKey) {
@@ -127,6 +127,7 @@ export async function resolveDownload(token: string): Promise<ResolvedDownload> 
         file.storageKey,
         file.resourceType ?? "image",
         file.format ?? "pdf",
+        fileName,
       ),
     };
   }
@@ -157,5 +158,15 @@ export function resolveLocalFile(fileUrl: string): string {
 }
 
 function sanitizeFileName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]+/g, " ")
+    .replace(/["\\/:*?<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildDownloadFileName(label: string): string {
+  return ensurePdfExtension(sanitizeFileName(label) || "download");
 }

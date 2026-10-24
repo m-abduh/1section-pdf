@@ -14,6 +14,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+function startDownload(url: string) {
+  // Trigger the download from a hidden iframe so the file is saved instead of
+  // being opened in a tab, and the underlying link is never exposed.
+  const frame = document.createElement("iframe");
+  frame.style.display = "none";
+  frame.src = url;
+  document.body.appendChild(frame);
+  window.setTimeout(() => frame.remove(), 60_000);
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
@@ -217,10 +227,13 @@ function SuccessContent() {
                             )
                           ) : (
                             item.downloads.map((download) => (
-                              <a
+                              <button
                                 key={download.token}
-                                href={`${apiUrl()}${download.url}`}
-                                className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-muted px-4 py-3 text-sm font-medium text-fg transition hover:border-fg/20 hover:bg-card"
+                                type="button"
+                                onClick={() =>
+                                  startDownload(`${apiUrl()}${download.url}`)
+                                }
+                                className="group flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-border bg-surface-muted px-4 py-3 text-left text-sm font-medium text-fg transition hover:border-fg/20 hover:bg-card"
                               >
                                 <span className="flex min-w-0 items-center gap-3">
                                   <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-fg text-xs font-bold text-surface">
@@ -231,7 +244,7 @@ function SuccessContent() {
                                 <span className="shrink-0 text-xs text-fg-muted">
                                   {download.remaining} left
                                 </span>
-                              </a>
+                              </button>
                             ))
                           )}
                         </div>
