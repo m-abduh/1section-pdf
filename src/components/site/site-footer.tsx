@@ -14,9 +14,9 @@ export function SiteFooter({ niches = [] }: { niches?: Niche[] }) {
             </span>
             <span className="text-lg font-semibold text-fg">{SITE_NAME}</span>
           </div>
-          <p className="mt-3 max-w-xs text-sm text-fg-muted">{SITE_TAGLINE}.</p>
+          <p className="mt-3 max-w-xs text-sm text-fg-muted">{SITE_TAGLINE}</p>
           <p className="mt-3 text-xs text-fg-muted">
-            Understand the problem. Decide what to do. Act.
+            Understand what is happening. Consider what it means for you.
           </p>
         </div>
 

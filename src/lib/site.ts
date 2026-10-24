@@ -1,7 +1,7 @@
 export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "1section";
 export const SITE_TAGLINE =
   process.env.NEXT_PUBLIC_SITE_TAGLINE ??
-  "Practical learning for the problems that actually matter";
+  "A deeper understanding of the problems that shape our lives";
 export const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "1section.com";
 
 export function isLocalRoot(): boolean {
