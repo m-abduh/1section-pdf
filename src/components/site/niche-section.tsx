@@ -33,7 +33,7 @@ export function NicheSection({
             {niche.name}
           </h3>
           <p className="mt-4 text-lg text-fg-muted">
-            {niche.tagline ?? `Practical bundles for ${niche.name}`}
+            {niche.tagline ?? `Practical guides for ${niche.name}`}
           </p>
 
           {niche.description ? (
@@ -54,7 +54,7 @@ export function NicheSection({
                 href={nicheUrl(niche.slug)}
                 className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90"
               >
-                Explore {count} bundle{count === 1 ? "" : "s"}
+                Explore {count} guide{count === 1 ? "" : "s"}
                 <span aria-hidden>→</span>
               </Link>
               <SocialLinks slug={niche.slug} />

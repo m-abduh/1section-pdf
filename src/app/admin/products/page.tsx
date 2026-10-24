@@ -118,7 +118,7 @@ export default function AdminProductsPage() {
             </p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-fg">Products</h1>
             <p className="mt-1 text-sm text-fg-muted">
-              One-time purchase PDF bundles. Sync langsung ke katalog Paddle.
+              One-time purchase PDF guides. Sync langsung ke katalog Paddle.
             </p>
           </div>
           <Button onClick={openCreate} disabled={!canCreate}>
@@ -152,7 +152,7 @@ export default function AdminProductsPage() {
           </span>
           <p className="mt-4 text-sm font-medium text-fg">No products yet</p>
           <p className="mt-1 text-xs text-fg-muted">
-            Add your first bundle to start selling.
+            Add your first guide to start selling.
           </p>
           {canCreate ? (
             <Button className="mt-5" onClick={openCreate}>

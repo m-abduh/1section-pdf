@@ -42,7 +42,7 @@ export default async function HomePage() {
                 className="animate-fade-up mt-6 max-w-2xl text-lg text-fg-muted"
                 style={{ animationDelay: "160ms" }}
               >
-                Focused, practical bundles for the problems you need to solve —
+                Focused, practical guides for the problems you need to solve —
                 one-time purchase, no fluff.
               </p>
               <div
@@ -98,7 +98,7 @@ export default async function HomePage() {
                 Explore by area
               </h2>
               <p className="mt-2 text-sm text-fg-muted">
-                Each area is explained below, with the bundles available for that
+                Each area is explained below, with the guides available for that
                 specific kind of problem.
               </p>
             </div>

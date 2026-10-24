@@ -224,13 +224,13 @@ export function ProductForm({
         </Field>
 
         <Field label="Name" error={errors.name?.message}>
-          <Input placeholder="Personal Finance Starter Bundle" {...register("name")} />
+          <Input placeholder="Personal Finance Starter Guide" {...register("name")} />
         </Field>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Slug" hint="Leave blank to auto-generate" error={errors.slug?.message}>
-          <Input placeholder="personal-finance-bundle" {...register("slug")} />
+          <Input placeholder="personal-finance-guide" {...register("slug")} />
         </Field>
         <div className="rounded-lg bg-surface-muted p-3 text-xs text-fg ring-1 ring-border">
           The Paddle product and price are created automatically on save. Paddle

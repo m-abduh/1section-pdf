@@ -139,7 +139,7 @@ export default function AdminNichesPage() {
                   </td>
                   <td className="px-5 py-4 text-fg-muted">
                     <span className="font-medium text-fg">{niche._count?.products ?? 0}</span>{" "}
-                    bundles
+                    guides
                   </td>
                   <td className="px-5 py-4">
                     <span

@@ -4,7 +4,7 @@ import { LEARNING_LEVEL_LABEL } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 import { resourceUrl } from "@/lib/site";
 
-export function BundleCard({
+export function ProductCard({
   product,
   nicheSlug,
   accentColor = "#6366F1",
@@ -43,7 +43,7 @@ export function BundleCard({
 
       <h3 className="mt-5 text-lg font-semibold text-fg">{product.name}</h3>
       <p className="mt-2 flex-1 text-sm text-fg-muted">
-        {product.outcome ?? product.summary ?? "A practical learning bundle."}
+        {product.outcome ?? product.summary ?? "A practical learning guide."}
       </p>
 
       {learnings.length > 0 ? (
@@ -72,7 +72,7 @@ export function BundleCard({
           ) : null}
         </span>
         <span className="text-sm font-semibold text-fg transition group-hover:translate-x-0.5">
-          View bundle →
+          View guide →
         </span>
       </div>
     </Link>

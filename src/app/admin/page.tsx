@@ -204,7 +204,7 @@ export default function AdminDashboardPage() {
               <StatCard
                 label="Products"
                 value={stats.data.products}
-                hint="Total bundles"
+                hint="Total guides"
                 icon={icons.products}
               />
               <StatCard

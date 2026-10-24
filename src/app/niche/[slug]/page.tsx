@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
-import { BundleCard } from "@/components/site/bundle-card";
+import { ProductCard } from "@/components/site/product-card";
 import { SocialLinks } from "@/components/site/social-links";
 import { getNiche, getNiches } from "@/lib/server-api";
 
@@ -21,7 +21,7 @@ export async function generateMetadata({
     return { title: "Area not found" };
   }
   return {
-    title: `${niche.name} — bundles`,
+    title: `${niche.name} — guides`,
     description: niche.tagline ?? niche.description ?? undefined,
   };
 }
@@ -70,7 +70,7 @@ export default async function NichePage({ params }: NichePageProps) {
                 className="animate-fade-up mt-7 max-w-2xl text-balance text-4xl font-extrabold tracking-tight text-gradient sm:text-6xl sm:leading-[1.05]"
                 style={{ animationDelay: "80ms" }}
               >
-                {niche.tagline ?? `Practical bundles for ${niche.name}`}
+                {niche.tagline ?? `Practical guides for ${niche.name}`}
               </h1>
 
               {niche.description ? (
@@ -97,14 +97,14 @@ export default async function NichePage({ params }: NichePageProps) {
                 style={{ animationDelay: "300ms" }}
               >
                 <a
-                  href="#bundles"
+                  href="#guides"
                   className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-accent-fg transition hover:opacity-90"
                 >
-                  Browse the bundles
+                  Browse the guides
                   <span aria-hidden>↓</span>
                 </a>
                 <span className="text-sm text-fg-muted">
-                  {niche.products.length} bundle
+                  {niche.products.length} guide
                   {niche.products.length === 1 ? "" : "s"} · one-time payment
                 </span>
                 <SocialLinks slug={niche.slug} />
@@ -118,7 +118,7 @@ export default async function NichePage({ params }: NichePageProps) {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-                    What these bundles help with
+                    What these guides help with
                   </span>
                   <span
                     className="size-2 rounded-full"
@@ -146,10 +146,10 @@ export default async function NichePage({ params }: NichePageProps) {
           </div>
         </section>
 
-        <section id="bundles" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <section id="guides" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="max-w-2xl">
             <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-              {niche.name} bundles
+              {niche.name} guides
             </h2>
             <p className="mt-2 text-sm text-fg-muted">
               One-time purchase. Access is delivered immediately after payment.
@@ -158,12 +158,12 @@ export default async function NichePage({ params }: NichePageProps) {
 
           {niche.products.length === 0 ? (
             <p className="mt-8 rounded-2xl border border-border bg-surface-muted p-8 text-center text-sm text-fg-muted">
-              No bundles available in this area yet.
+              No guides available in this area yet.
             </p>
           ) : (
             <div className="mt-10 grid gap-6 md:grid-cols-2">
               {niche.products.map((product) => (
-                <BundleCard
+                <ProductCard
                   key={product.id}
                   product={product}
                   nicheSlug={niche.slug}
