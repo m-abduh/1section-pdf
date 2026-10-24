@@ -1,14 +1,31 @@
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { NicheSection } from "@/components/site/niche-section";
-import { getNiches } from "@/lib/server-api";
-import { nicheUrl } from "@/lib/site";
+import { getNiches, getProducts } from "@/lib/server-api";
+import { formatCurrency } from "@/lib/format";
+import { resourceUrl } from "@/lib/site";
 
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const niches = (await getNiches()) ?? [];
+  const [nichesResponse, productsResponse] = await Promise.all([
+    getNiches(),
+    getProducts(),
+  ]);
+  const niches = nichesResponse ?? [];
   const list = niches;
+  const activeNichesById = new Map(niches.map((niche) => [niche.id, niche]));
+  const latestProducts = (productsResponse ?? [])
+    .flatMap((product) => {
+      const niche = activeNichesById.get(product.nicheId);
+      return niche ? [{ product, niche }] : [];
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.product.createdAt).getTime() -
+        new Date(left.product.createdAt).getTime(),
+    )
+    .slice(0, 3);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
@@ -60,37 +77,73 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {niches.length > 0 ? (
-              <div className="relative hidden lg:block">
-                <div className="grid grid-cols-2 gap-4">
-                  {niches.map((niche) => (
-                    <a
-                      key={niche.id}
-                      href={nicheUrl(niche.slug)}
-                      className="group flex flex-col rounded-2xl border border-border bg-card/70 p-5 backdrop-blur transition hover:-translate-y-0.5 hover:border-fg/20 hover:shadow-xl dark:hover:shadow-black/40"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="size-2.5 rounded-full"
-                          style={{ backgroundColor: niche.accentColor }}
-                        />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-                          {niche.name}
-                        </span>
-                      </span>
-                      <span className="mt-3 line-clamp-3 text-sm text-fg-muted">
-                        {niche.tagline ??
-                          niche.description ??
-                          `Explore the real-life problems within ${niche.name}.`}
-                      </span>
-                      <span className="mt-4 text-sm font-semibold text-fg transition group-hover:translate-x-0.5">
-                        Explore problems →
-                      </span>
-                    </a>
-                  ))}
+            <aside
+              aria-label="Latest guides"
+              className="animate-fade-up mx-auto w-full max-w-xl lg:ml-auto lg:mr-0 lg:max-w-lg"
+              style={{ animationDelay: "180ms" }}
+            >
+              <div className="flex items-end justify-between gap-4 border-b border-fg/20 pb-4">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-fg-muted sm:text-xs">
+                    Recently published
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
+                    Latest guides
+                  </h2>
                 </div>
+                <span className="pb-1 text-xs text-fg-muted">
+                  One problem, explored in depth
+                </span>
               </div>
-            ) : null}
+
+              {latestProducts.length > 0 ? (
+                <ul>
+                  {latestProducts.map(({ product, niche }, index) => (
+                    <li key={product.id} className="border-b border-border">
+                      <a
+                        href={resourceUrl(niche.slug, product.slug)}
+                        className="group block py-5 transition-colors hover:bg-surface-muted/60 sm:py-6"
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="flex items-center gap-2 text-xs font-medium text-fg-muted">
+                            <span
+                              className="size-1.5 rounded-full"
+                              style={{
+                                backgroundColor: niche.accentColor,
+                              }}
+                            />
+                            {niche.name}
+                          </span>
+                          <span className="text-xs tabular-nums text-fg-muted">
+                            0{index + 1}
+                          </span>
+                        </div>
+                        <h3 className="mt-3 text-lg font-semibold tracking-tight text-fg transition group-hover:translate-x-0.5 sm:text-xl">
+                          {product.name}
+                        </h3>
+                        <div className="mt-3 flex items-center justify-between gap-4">
+                          <p className="line-clamp-2 max-w-sm text-sm leading-6 text-fg-muted">
+                            {product.summary ??
+                              product.outcome ??
+                              "A focused guide to understanding a real-life problem."}
+                          </p>
+                          <span className="shrink-0 text-sm font-semibold text-fg">
+                            {formatCurrency(
+                              product.priceAmount,
+                              product.currency,
+                            )}
+                          </span>
+                        </div>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="border-b border-border py-8 text-sm text-fg-muted">
+                  New guides will appear here as they are published.
+                </p>
+              )}
+            </aside>
           </div>
         </section>
 

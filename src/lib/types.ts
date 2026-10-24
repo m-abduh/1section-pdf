@@ -69,6 +69,7 @@ export interface Product {
   files: ProductFile[];
   active: boolean;
   sortOrder: number;
+  createdAt: string;
   niche?: { id: string; slug: string; name: string; accentColor?: string };
   _count?: { orderItems: number };
 }
