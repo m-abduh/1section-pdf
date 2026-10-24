@@ -205,21 +205,27 @@ export default async function HomePage() {
         </section>
 
         <section id="niches">
-          <div className="mx-auto max-w-6xl px-4 pt-20 sm:px-6">
-            <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold tracking-tight text-fg">
-                Start with the situation, not the subject
-              </h2>
-              <p className="mt-2 text-sm text-fg-muted">
-                Explore the real situations behind each subject, then find a
-                focused guide when one is available.
+          <div className="mx-auto max-w-6xl px-4 pb-8 pt-20 sm:px-6 sm:pb-12 sm:pt-28">
+            <div className="grid gap-6 border-b border-border pb-8 sm:pb-10 lg:grid-cols-[1fr_0.7fr] lg:items-end lg:gap-12">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-fg-muted">
+                  Find your starting point
+                </p>
+                <h2 className="mt-4 max-w-2xl text-balance text-3xl font-bold tracking-tight text-fg sm:text-5xl sm:leading-[1.08]">
+                  Start with what&rsquo;s happening in your life.
+                </h2>
+              </div>
+              <p className="max-w-lg text-sm leading-7 text-fg-muted sm:text-base lg:justify-self-end">
+                Not sure what to call it? Begin with the situation. Explore
+                focused guides that look at what may be behind it—and what that
+                could mean for you.
               </p>
             </div>
           </div>
 
-          <div className="mt-8">
+          <div className="pb-12">
             {list.length === 0 ? (
-              <p className="mx-auto max-w-6xl rounded-2xl border border-border bg-surface-muted p-8 text-center text-sm text-fg-muted">
+              <p className="mx-auto max-w-6xl rounded-3xl border border-dashed border-border bg-surface-muted/50 p-10 text-center text-sm text-fg-muted">
                 No problem areas are published yet.
               </p>
             ) : (
