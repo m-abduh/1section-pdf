@@ -27,6 +27,15 @@ export interface UploadedPdf {
   assetFileId?: string;
 }
 
+export interface UploadedThumbnail {
+  provider: "CLOUDINARY";
+  storageKey: string;
+  url: string;
+  format: string;
+  bytes: number;
+  checksum: string;
+}
+
 export interface ProductInput {
   nicheId: string;
   name: string;
@@ -113,8 +122,22 @@ export function useUploadPdf() {
   });
 }
 
-export interface PaddleSyncResult {
-  paddleProductId: string;
+export function useUploadThumbnail() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await api.post<{ data: UploadedThumbnail }>(
+        "/admin/thumbnails",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      return response.data.data;
+    },
+  });
+}
+
+export interface PaddleSyncResult {  paddleProductId: string;
   paddlePriceId: string;
   createdProduct: boolean;
   createdPrice: boolean;

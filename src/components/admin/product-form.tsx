@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +9,7 @@ import type { Niche, Product } from "@/lib/types";
 import { LEARNING_LEVELS, type LearningLevel } from "@/lib/types";
 import {
   useUploadPdf,
+  useUploadThumbnail,
   type ProductFileInput,
   type ProductInput,
 } from "@/hooks/use-admin-products";
@@ -74,6 +76,7 @@ export function ProductForm({
   isSubmitting: boolean;
 }) {
   const uploadPdf = useUploadPdf();
+  const uploadThumbnail = useUploadThumbnail();
   const [files, setFiles] = useState<ProductFileInput[]>(
     product?.files.map((file) => ({
       name: file.name,
@@ -89,6 +92,8 @@ export function ProductForm({
   );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
 
   const defaults: FormValues = product
     ? {
@@ -137,8 +142,12 @@ export function ProductForm({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: defaults });
+
+  const coverImage = watch("coverImage");
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -165,6 +174,21 @@ export function ProductForm({
       setUploadError(getApiErrorMessage(error));
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCoverImage = async (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file) return;
+    setCoverError(null);
+    setCoverUploading(true);
+    try {
+      const result = await uploadThumbnail.mutateAsync(file);
+      setValue("coverImage", result.url, { shouldValidate: true });
+    } catch (error) {
+      setCoverError(getApiErrorMessage(error));
+    } finally {
+      setCoverUploading(false);
     }
   };
 
@@ -305,8 +329,60 @@ export function ProductForm({
         <Textarea rows={4} {...register("features")} />
       </Field>
 
-      <Field label="Cover image URL" error={errors.coverImage?.message}>
-        <Input placeholder="https://..." {...register("coverImage")} />
+      <Field
+        label="Cover image"
+        hint="JPG, PNG or WebP up to 4 MB. Uploaded to Cloudinary."
+        error={errors.coverImage?.message}
+      >
+        <div className="space-y-3">
+          {coverImage ? (
+            <div className="relative aspect-[16/10] w-full max-w-sm overflow-hidden rounded-xl border border-border bg-surface-muted">
+              <Image
+                src={coverImage}
+                alt="Cover preview"
+                fill
+                unoptimized
+                sizes="384px"
+                className="object-cover"
+              />
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="cursor-pointer rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition hover:opacity-90">
+              {coverImage ? "Replace image" : "Upload image"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  void handleCoverImage(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+
+            {coverImage ? (
+              <button
+                type="button"
+                onClick={() => setValue("coverImage", "", { shouldValidate: true })}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg-muted transition hover:text-fg"
+              >
+                Remove
+              </button>
+            ) : null}
+
+            {coverUploading ? (
+              <span className="flex items-center gap-2 text-xs text-fg-muted">
+                <Spinner /> Uploading...
+              </span>
+            ) : null}
+          </div>
+
+          {coverError ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{coverError}</p>
+          ) : null}
+        </div>
       </Field>
 
       <div className="rounded-lg bg-surface-muted p-4">

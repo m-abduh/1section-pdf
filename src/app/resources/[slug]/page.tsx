@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -68,6 +69,18 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
               <div>
+                {product.coverImage ? (
+                  <div className="relative mb-6 aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border bg-surface-muted">
+                    <Image
+                      src={product.coverImage}
+                      alt={product.name}
+                      fill
+                      priority
+                      sizes="(min-width: 1024px) 60vw, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
                 <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-fg-muted">
                   {LEARNING_LEVEL_LABEL[product.level]}
                 </span>

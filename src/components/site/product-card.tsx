@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Product } from "@/lib/types";
 import { LEARNING_LEVEL_LABEL } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
@@ -23,9 +24,21 @@ export function ProductCard({
       className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card p-6 transition duration-300 hover:-translate-y-1 hover:border-fg/20 hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-black/40"
     >
       <span
-        className="absolute inset-x-0 top-0 h-1"
+        className="absolute inset-x-0 top-0 z-10 h-1"
         style={{ backgroundColor: accentColor }}
       />
+
+      {product.coverImage ? (
+        <div className="relative -mx-6 -mt-6 mb-5 aspect-[16/10] overflow-hidden bg-surface-muted">
+          <Image
+            src={product.coverImage}
+            alt={product.name}
+            fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+            className="object-cover transition duration-500 group-hover:scale-[1.03]"
+          />
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-between gap-3">
         <span className="rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-semibold text-fg-muted">

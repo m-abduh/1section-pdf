@@ -38,6 +38,71 @@ export function checksumOf(buffer: Buffer): string {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
+export interface UploadedImage {
+  provider: "CLOUDINARY";
+  storageKey: string;
+  url: string;
+  format: string;
+  bytes: number;
+  checksum: string;
+}
+
+function publicIdBase(originalName: string): string {
+  return originalName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9-_]+/g, "-")
+    .slice(0, 80);
+}
+
+/** Uploads a public cover/thumbnail image (JPEG, PNG or WebP). */
+export async function uploadImageBuffer(
+  buffer: Buffer,
+  originalName: string,
+): Promise<UploadedImage> {
+  ensureConfigured();
+
+  const result = await new Promise<{
+    public_id: string;
+    secure_url: string;
+    format: string;
+    bytes: number;
+  }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "image",
+        type: "upload",
+        folder: `${env.CLOUDINARY_FOLDER}/covers`,
+        public_id: `${publicIdBase(originalName)}-${Date.now()}`,
+        transformation: [{ quality: "auto", fetch_format: "auto" }],
+      },
+      (error, uploadResult) => {
+        if (error || !uploadResult) {
+          reject(error ?? new Error("Cloudinary upload failed"));
+          return;
+        }
+        resolve(
+          uploadResult as unknown as {
+            public_id: string;
+            secure_url: string;
+            format: string;
+            bytes: number;
+          },
+        );
+      },
+    );
+    stream.end(buffer);
+  });
+
+  return {
+    provider: "CLOUDINARY",
+    storageKey: result.public_id,
+    url: result.secure_url,
+    format: result.format,
+    bytes: result.bytes,
+    checksum: checksumOf(buffer),
+  };
+}
+
 export async function uploadPdfBuffer(
   buffer: Buffer,
   originalName: string,
