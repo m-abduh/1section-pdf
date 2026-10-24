@@ -50,10 +50,10 @@ export default async function HomePage() {
                 ONE PROBLEM · UNDERSTOOD MORE DEEPLY
               </span>
               <h1
-                className="animate-fade-up mt-7 text-balance text-4xl font-extrabold tracking-tight text-gradient sm:text-6xl sm:leading-[1.05]"
+                className="animate-fade-up mt-7 max-w-xl text-balance text-4xl font-bold leading-[1.08] tracking-tight text-fg sm:text-6xl sm:leading-[1.02]"
                 style={{ animationDelay: "80ms" }}
               >
-                A deeper understanding of the problems that shape our lives.
+                Understand the problems that shape your life.
               </h1>
               <p
                 className="animate-fade-up mt-6 max-w-2xl text-lg text-fg-muted"

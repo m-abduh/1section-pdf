@@ -3,12 +3,6 @@ import type { Niche } from "@/lib/types";
 import { SITE_NAME, nicheUrl } from "@/lib/site";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const globalLinks = [
-  { href: "/about", label: "About" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/support", label: "Support" },
-];
-
 export function SiteHeader({
   niches = [],
   variant = "default",
@@ -43,17 +37,6 @@ export function SiteHeader({
           </Link>
 
           <div className="flex items-center gap-2">
-            <nav className="mr-2 hidden items-center gap-6 md:flex">
-              {globalLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm font-medium text-fg-muted transition hover:text-fg"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
             <ThemeToggle />
             <Link
               href="/#niches"
@@ -124,17 +107,7 @@ export function SiteHeader({
           ) : null}
         </div>
 
-        {/* Center: primary nav */}
-        <nav className="hidden items-center gap-1 md:flex">
-          {globalLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-fg"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <div className="flex shrink-0 items-center gap-2">
           {currentNicheName ? (
             <Link
               href="/checkout/success"
@@ -143,10 +116,6 @@ export function SiteHeader({
               Retrieve purchase
             </Link>
           ) : null}
-        </nav>
-
-        {/* Right: theme */}
-        <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
         </div>
       </div>
