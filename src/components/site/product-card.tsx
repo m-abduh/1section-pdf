@@ -14,8 +14,11 @@ export function ProductCard({
   nicheSlug: string;
   accentColor?: string;
 }) {
+  const isFree = product.priceAmount === 0;
   const hasDiscount =
-    product.compareAtAmount != null && product.compareAtAmount > product.priceAmount;
+    !isFree &&
+    product.compareAtAmount != null &&
+    product.compareAtAmount > product.priceAmount;
   const learnings = product.learnings?.slice(0, 3) ?? [];
 
   return (
@@ -44,7 +47,14 @@ export function ProductCard({
         <span className="rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-semibold text-fg-muted">
           {LEARNING_LEVEL_LABEL[product.level]}
         </span>
-        {hasDiscount ? (
+        {isFree ? (
+          <span
+            className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+            style={{ backgroundColor: accentColor }}
+          >
+            Free
+          </span>
+        ) : hasDiscount ? (
           <span
             className="rounded-full px-3 py-1 text-xs font-semibold text-white"
             style={{ backgroundColor: accentColor }}

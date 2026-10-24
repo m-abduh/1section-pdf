@@ -38,8 +38,11 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
     notFound();
   }
 
+  const isFree = product.priceAmount === 0;
   const hasDiscount =
-    product.compareAtAmount != null && product.compareAtAmount > product.priceAmount;
+    !isFree &&
+    product.compareAtAmount != null &&
+    product.compareAtAmount > product.priceAmount;
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
@@ -198,6 +201,11 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
                           product.compareAtAmount as number,
                           product.currency,
                         )}
+                      </span>
+                    ) : null}
+                    {isFree ? (
+                      <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg">
+                        Free
                       </span>
                     ) : null}
                   </div>
