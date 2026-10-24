@@ -65,7 +65,7 @@ Didefinisikan di `:root` (light) dan `.dark`, lalu diekspos ke Tailwind v4 lewat
 - Implementasi: `src/components/theme-provider.tsx`.
 - Variabel `dark` class via `@custom-variant dark (&:where(.dark, .dark *))`.
 - Simpan preferensi di `localStorage` key **`section-theme`**.
-- Nilai awal: dari localStorage, kalau tidak ada ikut `prefers-color-scheme`.
+- Nilai awal: tema gelap; pilihan tema di `localStorage` mengoverride default.
 - **Anti-flash**: script inline `themeScript` di `<head>` (`app/layout.tsx`) menambahkan class `dark` sebelum render.
 - API hook: `useTheme()` → `{ theme, setTheme, toggle }`.
 - Komponen: `ThemeToggle` (ikon sun/moon, `aria-label` dinamis).

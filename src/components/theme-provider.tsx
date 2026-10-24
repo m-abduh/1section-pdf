@@ -21,7 +21,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "light",
+  theme: "dark",
   setTheme: () => {},
   toggle: () => {},
 });
@@ -37,7 +37,7 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useServerInsertedHTML(() => (
     <script dangerouslySetInnerHTML={{ __html: themeScript }} />
@@ -45,11 +45,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const initial: Theme =
-      stored ??
-      (window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light");
+    const initial: Theme = stored ?? "dark";
     setThemeState(initial);
     applyTheme(initial);
   }, []);
@@ -78,4 +74,4 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-export const themeScript = `(function(){try{var k='${STORAGE_KEY}';var s=localStorage.getItem(k);var d=s?s==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+export const themeScript = `(function(){try{var k='${STORAGE_KEY}';var s=localStorage.getItem(k);var d=s?s==='dark':true;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
