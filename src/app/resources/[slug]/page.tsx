@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { BuyButton } from "@/components/site/buy-button";
 import { getNiches, getProduct } from "@/lib/server-api";
-import { nicheUrl, rootUrl } from "@/lib/site";
+import { nicheUrl } from "@/lib/site";
 import { formatCurrency } from "@/lib/format";
 import { LEARNING_LEVEL_LABEL } from "@/lib/types";
 
@@ -46,44 +46,29 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
-      <SiteHeader niches={niches ?? []} />
+      <SiteHeader
+        niches={niches ?? []}
+        currentNicheName={product.niche?.name}
+      />
 
       <main className="flex-1">
         <section className="border-b border-border">
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
             <nav className="text-sm text-fg-muted">
-              <Link href={rootUrl()} className="transition hover:text-fg">
-                Home
-              </Link>
               {product.niche ? (
-                <>
-                  {" / "}
-                  <Link
-                    href={nicheUrl(product.niche.slug)}
-                    className="transition hover:text-fg"
-                  >
-                    {product.niche.name}
-                  </Link>
-                </>
+                <Link
+                  href={nicheUrl(product.niche.slug)}
+                  className="transition hover:text-fg"
+                >
+                  {product.niche.name}
+                </Link>
               ) : null}
-              {" / "}
+              {product.niche ? " / " : null}
               <span className="text-fg">{product.name}</span>
             </nav>
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
               <div>
-                {product.coverImage ? (
-                  <div className="relative mb-6 aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border bg-surface-muted">
-                    <Image
-                      src={product.coverImage}
-                      alt={product.name}
-                      fill
-                      priority
-                      sizes="(min-width: 1024px) 60vw, 100vw"
-                      className="object-cover"
-                    />
-                  </div>
-                ) : null}
                 <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-fg-muted">
                   {LEARNING_LEVEL_LABEL[product.level]}
                 </span>
@@ -190,6 +175,18 @@ export default async function ResourcePage({ params }: ResourcePageProps) {
               </div>
 
               <aside className="lg:sticky lg:top-24 lg:self-start">
+                {product.coverImage ? (
+                  <div className="relative mb-5 aspect-[16/10] w-full overflow-hidden rounded-3xl border border-border bg-surface-muted">
+                    <Image
+                      src={product.coverImage}
+                      alt={product.name}
+                      fill
+                      priority
+                      sizes="(min-width: 1024px) 40vw, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
                 <div className="rounded-3xl border border-border bg-card p-6 shadow-2xl shadow-black/5 dark:shadow-black/40">
                   <div className="flex items-end gap-3">
                     <span className="text-3xl font-bold text-fg">
