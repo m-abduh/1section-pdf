@@ -211,38 +211,6 @@ export const products: SeedProduct[] = [
     sortOrder: 1,
   },
   {
-    nicheSlug: "finance",
-    slug: "debt-or-savings-priorities",
-    name: "Debt or Savings: Choosing Your Priority",
-    summary:
-      "A framework to compare debt repayment and savings goals using your own numbers.",
-    description:
-      "A structured way to compare the trade-offs between paying down debt and building savings. You will map your options, account for risk, and choose a priority you can explain and revisit.",
-    audience: "People juggling debt repayment and savings at the same time.",
-    notFor:
-      "Anyone seeking a guarantee about returns or personalized investment guidance.",
-    outcome:
-      "A defensible priority order for debt and savings based on your constraints.",
-    learnings: [
-      "How to compare trade-offs instead of relying on rules of thumb.",
-      "How to account for risk and flexibility in your plan.",
-      "How to explain and revisit your chosen priority.",
-    ],
-    limitations:
-      "Educational material only. Individual circumstances vary and are not assessed.",
-    license: "Personal use. Do not redistribute or resell the files.",
-    level: "FOUNDATIONS",
-    priceAmount: 2400,
-    compareAtAmount: null,
-    features: [
-      "A decision framework for debt vs savings",
-      "Comparison worksheet with your own inputs",
-      "Common misconceptions corrected",
-      "Lifetime access to the files",
-    ],
-    sortOrder: 2,
-  },
-  {
     nicheSlug: "business",
     slug: "customer-discovery-sprint",
     name: "Customer Discovery Sprint",
@@ -332,96 +300,6 @@ export const products: SeedProduct[] = [
       "Lifetime access to the files",
     ],
     sortOrder: 1,
-  },
-  {
-    nicheSlug: "business",
-    slug: "pricing-your-first-offer",
-    name: "Pricing Your First Offer",
-    summary:
-      "Work out what to charge, what your costs really are, and how to test a price.",
-    description:
-      "A practical walkthrough for pricing an early offer: understanding your true costs, choosing a starting price, and testing it with real customers instead of guessing.",
-    audience: "First-time founders and solo sellers launching an offer.",
-    notFor: "Businesses wanting financial forecasting or tax advice.",
-    outcome: "A starting price you can explain and a plan to test it.",
-    learnings: [
-      "How to calculate your real cost per sale.",
-      "How to choose a starting price with a margin.",
-      "How to test price changes without losing trust.",
-    ],
-    limitations:
-      "Educational material only. It is not financial or tax advice.",
-    license: "Personal and internal business use. Do not resell.",
-    level: "FOUNDATIONS",
-    priceAmount: 2400,
-    compareAtAmount: null,
-    features: [
-      "Cost-per-sale worksheet",
-      "Pricing starting-point guide",
-      "A simple price-testing plan",
-      "Lifetime access to the files",
-    ],
-    sortOrder: 2,
-  },
-  {
-    nicheSlug: "psychology",
-    slug: "focus-without-willpower",
-    name: "Focus Without Willpower",
-    summary:
-      "Design your environment and routine so focus needs less effort.",
-    description:
-      "A practical approach to attention: reducing friction, shaping your environment, and building short focus blocks that survive a normal, distracted day.",
-    audience: "People who struggle to focus on one task at a time.",
-    notFor: "Anyone seeking clinical or therapeutic support.",
-    outcome: "A focus routine built around your environment, not willpower.",
-    learnings: [
-      "How environment shapes attention.",
-      "How to remove friction before you need focus.",
-      "How to structure short focus blocks.",
-    ],
-    limitations:
-      "Educational content only. Not a substitute for professional care.",
-    license: "Personal use. Do not redistribute or resell the files.",
-    level: "PRACTICAL",
-    priceAmount: 1900,
-    compareAtAmount: 2900,
-    features: [
-      "Environment and friction checklist",
-      "Focus block template",
-      "A one-week experiment",
-      "Lifetime access to the files",
-    ],
-    sortOrder: 2,
-  },
-  {
-    nicheSlug: "career",
-    slug: "interview-evidence-stories",
-    name: "Interview Evidence Stories",
-    summary:
-      "Turn your real experience into clear stories you can use in interviews.",
-    description:
-      "A structured way to collect and shape your own examples into interview stories, so you can answer behavioral questions with concrete evidence.",
-    audience: "Candidates preparing for behavioral interviews.",
-    notFor: "People seeking guaranteed job offers or coaching.",
-    outcome: "A set of ready, evidence-based interview stories.",
-    learnings: [
-      "How to find strong examples in your own history.",
-      "How to structure a story interviewers trust.",
-      "How to adapt one story to several questions.",
-    ],
-    limitations:
-      "Outcomes depend on your experience and the role. No result is guaranteed.",
-    license: "Personal use. Do not redistribute or resell the files.",
-    level: "PRACTICAL",
-    priceAmount: 2400,
-    compareAtAmount: null,
-    features: [
-      "Story collection template",
-      "A structure for evidence-based answers",
-      "Adaptation examples",
-      "Lifetime access to the files",
-    ],
-    sortOrder: 2,
   },
   {
     nicheSlug: "education",
